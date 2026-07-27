@@ -7,10 +7,13 @@
   const PREF = "https://www.val-doise.gouv.fr/Actions-de-l-Etat/Environnement-risques-et-nuisances/Prevention-Risques/Risques-naturels/Les-plans-de-prevention-des-risques-naturels-PPRN";
   const bounds95 = L.latLngBounds([48.82, 1.60], [49.25, 2.62]);
 
-  const map = L.map("map", { zoomControl: true, maxZoom: 19 });
+  const map = L.map("map", { zoomControl: true, minZoom: 8, maxZoom: 19 });
   map.fitBounds(bounds95);
   map.createPane("baseTiles");
   map.getPane("baseTiles").style.zIndex = 200;
+  map.createPane("riskTiles");
+  map.getPane("riskTiles").style.zIndex = 350;
+  map.getPane("riskTiles").style.pointerEvents = "none";
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     pane: "baseTiles",
@@ -18,12 +21,14 @@
   }).addTo(map);
 
   const defs = {
-    PPRN_ZONE_INOND: { title: "Zonage réglementaire PPRI", family: "Inondation", opacity: 0.78 },
-    PPRN_ZONE_MVT: { title: "Zonage réglementaire PPRN", family: "Mouvement de terrain", opacity: 0.78 },
-    ALEARG_REALISE: { title: "Retrait-gonflement des argiles", family: "Mouvement de terrain", opacity: 0.48 },
-    PPRN_PERIMETRE_INOND: { title: "Périmètre de PPRI", family: "Inondation", opacity: 0.62 }
+    PPRN_PERIMETRE_INOND: { title: "Périmètre des PPRI", family: "Inondation", opacity: 0.82 },
+    PPRN_PERIMETRE_MVT: { title: "Périmètre des PPRN", family: "Mouvement de terrain", opacity: 0.78 },
+    PPRN_ZONE_INOND: { title: "Zonage réglementaire PPRI", family: "Inondation", opacity: 0.82 },
+    PPRN_ZONE_MVT: { title: "Zonage réglementaire PPRN", family: "Mouvement de terrain", opacity: 0.82 },
+    ALEARG_REALISE: { title: "Retrait-gonflement des argiles", family: "Mouvement de terrain", opacity: 0.58 }
   };
   const layers = {};
+  const preferences = { inond: true, mvt: true, argile: false };
   let activeNames = [];
   let searchMarker = null;
 
@@ -40,19 +45,22 @@
       transparent: true,
       opacity: defs[name].opacity,
       version: "1.3.0",
+      pane: "riskTiles",
       attribution: "Géorisques"
     });
   }
 
-  document.querySelectorAll(".layer-row").forEach((row) => {
-    const name = row.dataset.layer;
+  Object.keys(defs).forEach((name) => {
     layers[name] = buildLayer(name);
+  });
+
+  document.querySelectorAll(".layer-row").forEach((row) => {
+    const family = row.dataset.family;
     const input = row.querySelector("input");
-    if (input.checked) layers[name].addTo(map);
+    preferences[family] = input.checked;
     input.addEventListener("change", () => {
-      if (input.checked) layers[name].addTo(map);
-      else map.removeLayer(layers[name]);
-      refreshActiveLayers();
+      preferences[family] = input.checked;
+      updateScaleDisplay();
     });
     row.addEventListener("click", (event) => {
       if (event.target.closest("input, label")) return;
@@ -64,33 +72,30 @@
   function refreshActiveLayers() {
     activeNames = Object.keys(layers).filter((name) => map.hasLayer(layers[name]));
     setStatus(activeNames.length ? `${activeNames.length} couche${activeNames.length > 1 ? "s" : ""} active${activeNames.length > 1 ? "s" : ""}` : "Aucune couche active", activeNames.length > 0);
-    updateScaleDisplay();
+  }
+
+  function setLayerVisible(name, visible) {
+    if (visible && !map.hasLayer(layers[name])) layers[name].addTo(map);
+    if (!visible && map.hasLayer(layers[name])) map.removeLayer(layers[name]);
   }
 
   function updateScaleDisplay() {
-    const zoom = map.getZoom();
-    const overview = zoom <= 10;
-    const transition = zoom === 11 || zoom === 12;
-    const exactOpacity = overview ? 0.46 : transition ? 0.64 : 0.84;
-    const perimeterOpacity = overview ? 0.72 : transition ? 0.42 : 0.18;
-
-    ["PPRN_ZONE_INOND", "PPRN_ZONE_MVT"].forEach((name) => {
-      if (layers[name]) layers[name].setOpacity(exactOpacity);
-    });
-    if (layers.PPRN_PERIMETRE_INOND) {
-      layers.PPRN_PERIMETRE_INOND.setOpacity(perimeterOpacity);
-    }
+    const detail = map.getZoom() >= 13;
+    setLayerVisible("PPRN_PERIMETRE_INOND", preferences.inond && !detail);
+    setLayerVisible("PPRN_PERIMETRE_MVT", preferences.mvt && !detail);
+    setLayerVisible("PPRN_ZONE_INOND", preferences.inond && detail);
+    setLayerVisible("PPRN_ZONE_MVT", preferences.mvt && detail);
+    setLayerVisible("ALEARG_REALISE", preferences.argile && detail);
+    refreshActiveLayers();
 
     const badge = $("#zoom-level");
     if (!badge) return;
-    badge.dataset.mode = overview ? "overview" : transition ? "transition" : "detail";
-    badge.innerHTML = overview
-      ? "<strong>Vue départementale</strong><span>Périmètres et zones principales</span>"
-      : transition
-        ? "<strong>Vue intermédiaire</strong><span>Les zonages précis apparaissent</span>"
-        : "<strong>Zonages détaillés</strong><span>Cliquez pour lire la réglementation</span>";
+    badge.dataset.mode = detail ? "detail" : "overview";
+    badge.innerHTML = detail
+      ? "<strong>Zonages réglementaires</strong><span>Cliquez sur une couleur pour lire la règle</span>"
+      : "<strong>Vue départementale</strong><span>Périmètres PPRI et PPRN visibles</span>";
   }
-  refreshActiveLayers();
+  updateScaleDisplay();
   map.on("zoomend", updateScaleDisplay);
 
   function escapeHtml(value) {
@@ -132,9 +137,9 @@
         const response = await fetch(featureInfoUrl(latlng, name), { cache: "no-store" });
         if (!response.ok) continue;
         const text = await response.text();
-        const properties = parseFeatureInfo(text);
-        if (properties) {
-          await openRisk({ properties }, name, latlng);
+        const features = parseFeatureInfo(text);
+        if (features.length) {
+          await openRisk(features, name, latlng);
           $("#progress-bar").style.width = "100%";
           setTimeout(() => $("#progress-bar").style.width = "0", 400);
           return;
@@ -149,14 +154,19 @@
   }
 
   function parseFeatureInfo(text) {
-    if (!/Feature\s+\d+\s*:/i.test(text)) return null;
-    const first = text.split(/\n\s*Feature\s+\d+\s*:\s*\n/i)[1] || "";
-    const props = {};
-    for (const line of first.split("\n")) {
-      const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*'(.*)'\s*$/);
-      if (match) props[match[1]] = match[2];
-    }
-    return Object.keys(props).length ? props : null;
+    if (!/Feature\s+[^:]+:/i.test(text)) return [];
+    return text
+      .split(/\n\s*Feature\s+[^:]+:\s*\n/i)
+      .slice(1)
+      .map((block) => {
+        const props = {};
+        for (const line of block.split("\n")) {
+          const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*'(.*)'\s*$/);
+          if (match) props[match[1]] = match[2];
+        }
+        return props;
+      })
+      .filter((props) => Object.keys(props).length);
   }
 
   async function reverseGeocode(latlng) {
@@ -190,16 +200,24 @@
   }
 
   function documentLinks(ppr) {
-    const fiche = `https://www.georisques.gouv.fr/donnee-risques/PPR/Fiche-ppr/pprn/${encodeURIComponent(ppr.idGaspar)}`;
-    return `
+    const catalog = window.PPR_DOCUMENTS?.[ppr.idGaspar];
+    const documents = catalog?.documents || [];
+    if (!documents.length) {
+      return `<div class="notice"><strong>Aucun PDF numérisé dans Géorisques pour ce dossier.</strong><br>
+        Le plan est bien recensé, mais aucune pièce directe n’est publiée dans le catalogue national.</div>`;
+    }
+    return documents.map((document) => `
       <div class="document-card">
-        <div><strong>Dossier officiel Géorisques</strong><small>Arrêté, règlement, rapport et cartes PDF disponibles selon le dossier</small></div>
-        <a href="${fiche}" target="_blank" rel="noopener">Lire et télécharger les PDF</a>
-      </div>`;
+        <div>
+          <strong>${escapeHtml(document.type)}</strong>
+          <small>${escapeHtml(document.title || ppr.libPpr)} · ${escapeHtml(document.date || "date non renseignée")}</small>
+        </div>
+        <a href="${escapeHtml(document.url)}" target="_blank" rel="noopener" download>Télécharger le PDF</a>
+      </div>`).join("");
   }
 
-  async function openRisk(feature, layerName, latlng) {
-    const props = feature.properties || {};
+  async function openRisk(features, layerName, latlng) {
+    const props = features[0] || {};
     const def = defs[layerName];
     let place = { city: "Val-d’Oise", insee: "", label: "" };
     try { place = await reverseGeocode(latlng); } catch (error) { console.warn(error); }
@@ -210,10 +228,14 @@
       const model = String(p.modeleProcedure || "");
       return def.family === "Inondation" ? model.includes("-I") : !model.includes("-I");
     });
-    const clickedGaspar = valueFrom(props, ["id_gaspar", "idGaspar"], "");
-    const chosen = pprs.find((p) => p.idGaspar === clickedGaspar) || relevant[0] || pprs[0] || null;
-    const zoneName = valueFrom(props, ["nom", "libelle", "codezone", "code_zone", "typezone"], def.title);
-    const rule = valueFrom(props, ["libelle", "type_reg", "typereg", "reglement", "codezone"], chosen?.zonageReglementaire?.listTypeReg?.[0]?.libelle || "Zonage à vérifier");
+    const clickedGasparIds = features
+      .map((item) => valueFrom(item, ["id_gaspar", "idGaspar"], ""))
+      .filter(Boolean);
+    const matched = pprs.filter((p) => clickedGasparIds.includes(p.idGaspar));
+    const displayedPprs = matched.length ? matched : relevant.length ? relevant : pprs;
+    const chosen = displayedPprs[0] || null;
+    const zoneName = valueFrom(props, ["nom", "libelle", "codezone", "code_zone", "typezone", "lib_ppr"], def.title);
+    const rule = valueFrom(props, ["libelle", "type_reg", "typereg", "reglement", "codezone", "libelle_sous_etat"], chosen?.zonageReglementaire?.listTypeReg?.[0]?.libelle || "Zonage à vérifier");
 
     $("#drawer-title").textContent = place.city;
     $("#drawer-sub").textContent = `${def.title} · ${zoneName}`;
@@ -221,14 +243,13 @@
     $("#summary-date").textContent = chosen?.dateModification || "Donnée officielle";
     $("#summary-text").textContent = summaryFor(def.family, rule);
 
-    const primaryLink = chosen
-      ? `https://www.georisques.gouv.fr/donnee-risques/PPR/Fiche-ppr/pprn/${encodeURIComponent(chosen.idGaspar)}`
-      : PREF;
-    $("#btn-export").href = primaryLink;
-    $("#btn-export").classList.remove("disabled");
+    const primaryDocument = chosen ? window.PPR_DOCUMENTS?.[chosen.idGaspar]?.documents?.[0] : null;
+    $("#btn-export").href = primaryDocument?.url || "#";
+    $("#btn-export").textContent = primaryDocument ? "Télécharger un document PDF" : "Aucun PDF direct disponible";
+    $("#btn-export").classList.toggle("disabled", !primaryDocument);
 
-    const pprHtml = pprs.length
-      ? pprs.map((p) => `
+    const pprHtml = displayedPprs.length
+      ? displayedPprs.map((p) => `
           <div class="block">
             <div class="block-title">${escapeHtml(p.libPpr)}</div>
             <div class="data-grid">
@@ -267,8 +288,9 @@
     $("#summary-date").textContent = "—";
     $("#summary-text").textContent = "Aucune des couches actuellement actives ne renvoie de zonage à cet endroit.";
     $("#drawer-body").innerHTML = `<div class="notice">Activez d’autres couches dans le panneau de gauche ou cliquez sur une zone colorée.</div>`;
-    $("#btn-export").href = PREF;
-    $("#btn-export").classList.remove("disabled");
+    $("#btn-export").href = "#";
+    $("#btn-export").textContent = "Aucun PDF direct disponible";
+    $("#btn-export").classList.add("disabled");
     $("#drawer").classList.add("open");
   }
 

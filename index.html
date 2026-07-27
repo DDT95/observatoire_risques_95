@@ -74,25 +74,20 @@
             <span class="global-api-state" id="global-api-state">Initialisation</span>
           </div>
           <div class="source-monitor" id="source-monitor">
-            <div class="source-monitor-row layer-row" data-layer="PPRN_ZONE_INOND">
+            <div class="source-monitor-row layer-row" data-family="inond">
               <span class="layer-swatch swatch-inond"></span>
               <div><strong>PPRI · Inondation</strong><small>Zonages réglementaires approuvés</small></div>
               <label class="switch"><input type="checkbox" checked><span></span></label>
             </div>
-            <div class="source-monitor-row layer-row" data-layer="PPRN_ZONE_MVT">
+            <div class="source-monitor-row layer-row" data-family="mvt">
               <span class="layer-swatch swatch-mvt"></span>
               <div><strong>Mouvements de terrain</strong><small>Carrières, gypse, instabilités</small></div>
               <label class="switch"><input type="checkbox" checked><span></span></label>
             </div>
-            <div class="source-monitor-row layer-row" data-layer="ALEARG_REALISE">
+            <div class="source-monitor-row layer-row" data-family="argile">
               <span class="layer-swatch swatch-argile"></span>
               <div><strong>Retrait-gonflement</strong><small>Exposition des sols argileux</small></div>
               <label class="switch"><input type="checkbox"><span></span></label>
-            </div>
-            <div class="source-monitor-row layer-row" data-layer="PPRN_PERIMETRE_INOND">
-              <span class="layer-swatch swatch-perim"></span>
-              <div><strong>Périmètres PPRI</strong><small>Emprise générale des plans</small></div>
-              <label class="switch"><input type="checkbox" checked><span></span></label>
             </div>
           </div>
         </div>
@@ -102,10 +97,7 @@
     <section class="map-zone">
       <div class="map-card">
         <div id="map"></div>
-        <div class="zoom-level" id="zoom-level" data-mode="overview" aria-live="polite">
-          <strong>Vue départementale</strong>
-          <span>Périmètres et zones principales</span>
-        </div>
+        <div class="zoom-level" id="zoom-level" aria-live="polite"></div>
         <div class="map-help" id="map-help">
           <b>Cliquez sur une zone</b>
           <span>Une synthèse et les documents officiels s’ouvrent à droite.</span>
@@ -151,6 +143,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="app.js?v=1-risques"></script>
+<script src="ppr-documents.js?v=20260727"></script>
+<script src="app.js?v=20260727-2"></script>
 </body>
 </html>
