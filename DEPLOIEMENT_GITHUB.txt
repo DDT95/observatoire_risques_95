@@ -1,0 +1,20 @@
+OBSERVATOIRE DU BÂTI — DÉPLOIEMENT GITHUB PAGES
+
+À envoyer à la racine du dépôt :
+[ ] index.html
+[ ] app.js
+[ ] styles.css
+[ ] .nojekyll
+[ ] 404.html
+
+Dans Settings > Pages :
+[ ] Deploy from a branch
+[ ] Branch : main
+[ ] Folder : / (root)
+
+Adresse attendue :
+https://ddt95.github.io/observatoire_bati/
+
+Après le commit :
+- attendre 1 à 2 minutes ;
+- faire Ctrl + F5 si l’ancienne version reste en cache.
