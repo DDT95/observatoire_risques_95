@@ -370,12 +370,40 @@
     return "Le secteur est concerné par un aléa ou un zonage réglementaire. La fiche ci-dessous résume l’information ; les documents approuvés restent la référence.";
   }
 
-  function documentLinks(ppr) {
+  function normalizeText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function documentIsForPlace(document, place, ppr) {
+    if (ppr.idGaspar !== "95PREF19840106") return true;
+    const city = normalizeText(place?.city);
+    const title = normalizeText(document.title);
+    return Boolean(city && title && title.includes(city));
+  }
+
+  function documentsForPlace(ppr, place) {
+    const documents = window.PPR_DOCUMENTS?.[ppr.idGaspar]?.documents || [];
+    return documents.filter((document) => documentIsForPlace(document, place, ppr));
+  }
+
+  function pdfReaderUrl(url) {
+    if (!url) return "#";
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}`;
+  }
+
+  function documentLinks(ppr, place) {
     const catalog = window.PPR_DOCUMENTS?.[ppr.idGaspar];
-    const documents = catalog?.documents || [];
+    const documents = documentsForPlace(ppr, place);
     if (!documents.length) {
-      return `<div class="notice"><strong>Aucun PDF numérisé dans Géorisques pour ce dossier.</strong><br>
-        Le plan est bien recensé, mais aucune pièce directe n’est publiée dans le catalogue national.</div>`;
+      const fiche = catalog?.fiche;
+      return `<div class="notice"><strong>Aucun PDF propre à ${escapeHtml(place?.city || "cette commune")} n’est publié dans ce dossier Géorisques.</strong><br>
+        Une pièce concernant une autre commune ne sera jamais proposée ici.
+        ${fiche ? `<br><a href="${escapeHtml(fiche)}" target="_blank" rel="noopener noreferrer">Consulter la fiche officielle du PPR ↗</a>` : ""}</div>`;
     }
     return documents.map((document) => `
       <div class="document-card">
@@ -383,16 +411,13 @@
           <strong>${escapeHtml(document.type)}</strong>
           <small>${escapeHtml(document.title || ppr.libPpr)} · ${escapeHtml(document.date || "date non renseignée")}</small>
         </div>
-        <a href="${escapeHtml(document.url)}" target="_blank" rel="noopener noreferrer"
+        <a href="${escapeHtml(pdfReaderUrl(document.url))}" target="_blank" rel="noopener noreferrer"
            aria-label="Lire ${escapeHtml(document.type)} dans un nouvel onglet">Lire le PDF ↗</a>
       </div>`).join("");
   }
 
-  function combinedDocumentLinks(ppr) {
-    const remote = window.PPR_DOCUMENTS?.[ppr.idGaspar]?.documents?.length
-      ? documentLinks(ppr)
-      : "";
-    return remote || `<div class="notice">Aucun document PDF en ligne n’est actuellement rattaché à ce périmètre.</div>`;
+  function combinedDocumentLinks(ppr, place) {
+    return documentLinks(ppr, place);
   }
 
   async function openLocalRisk(feature, latlng) {
@@ -419,10 +444,15 @@
     $("#summary-date").textContent = idGaspar || "Donnée officielle";
     $("#summary-text").textContent = summaryFor(family, props.typeass);
 
-    const firstDocument = catalog.documents?.[0]?.url || catalog.fiche || "";
-    $("#btn-export").href = firstDocument || "#";
-    $("#btn-export").textContent = firstDocument ? "Lire le document principal" : "Aucun PDF direct disponible";
-    $("#btn-export").classList.toggle("disabled", !firstDocument);
+    const firstDocument = documentsForPlace(ppr, place)[0]?.url || "";
+    const officialTarget = firstDocument ? pdfReaderUrl(firstDocument) : catalog.fiche || "";
+    $("#btn-export").href = officialTarget || "#";
+    $("#btn-export").textContent = firstDocument
+      ? "Lire le PDF dans un nouvel onglet ↗"
+      : officialTarget
+        ? "Consulter la fiche officielle du PPR ↗"
+        : "Aucun document disponible";
+    $("#btn-export").classList.toggle("disabled", !officialTarget);
 
     $("#drawer-body").innerHTML = `
       <div class="section-title">Synthèse de la zone cliquée</div>
@@ -440,7 +470,7 @@
       <div class="section-title">Documents officiels</div>
       <div class="block">
         <div class="block-title">${escapeHtml(catalog.title || title)}</div>
-        ${combinedDocumentLinks(ppr)}
+        ${combinedDocumentLinks(ppr, place)}
       </div>
       <div class="notice">Le périmètre coloré indique l’emprise générale du plan. À partir du zoom 13, les zonages réglementaires détaillés de Géorisques se superposent. Les documents approuvés font foi.</div>`;
     $("#drawer").classList.add("open");
@@ -493,10 +523,16 @@
     $("#summary-date").textContent = chosen?.dateModification || "Donnée officielle";
     $("#summary-text").textContent = summaryFor(def.family, rule);
 
-    const primaryDocument = chosen ? window.PPR_DOCUMENTS?.[chosen.idGaspar]?.documents?.[0] : null;
-    $("#btn-export").href = primaryDocument?.url || "#";
-    $("#btn-export").textContent = primaryDocument ? "Lire le document principal ↗" : "Aucun PDF direct disponible";
-    $("#btn-export").classList.toggle("disabled", !primaryDocument);
+    const primaryDocument = chosen ? documentsForPlace(chosen, place)[0] : null;
+    const chosenCatalog = chosen ? window.PPR_DOCUMENTS?.[chosen.idGaspar] : null;
+    const officialTarget = primaryDocument ? pdfReaderUrl(primaryDocument.url) : chosenCatalog?.fiche || "";
+    $("#btn-export").href = officialTarget || "#";
+    $("#btn-export").textContent = primaryDocument
+      ? "Lire le PDF dans un nouvel onglet ↗"
+      : officialTarget
+        ? "Consulter la fiche officielle du PPR ↗"
+        : "Aucun document disponible";
+    $("#btn-export").classList.toggle("disabled", !officialTarget);
 
     const pprHtml = displayedPprs.length
       ? displayedPprs.map((p) => `
@@ -508,7 +544,7 @@
               <div class="data-row"><div class="l">Territoire</div><div class="v">${escapeHtml(p.libBassinRisques || place.city)}</div></div>
               <div class="data-row"><div class="l">Zonage</div><div class="v">${p.zonageReglementaire?.zoneRegExists ? "Disponible" : "Non numérisé"}</div></div>
             </div>
-            ${documentLinks(p)}
+            ${documentLinks(p, place)}
           </div>`).join("")
       : `<div class="notice"><strong>Aucune procédure PPR remontée pour cette commune.</strong><br>Consultez le dossier départemental de la Préfecture pour vérifier les documents locaux.</div>`;
 
