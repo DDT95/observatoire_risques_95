@@ -14,6 +14,8 @@
   map.createPane("riskTiles");
   map.getPane("riskTiles").style.zIndex = 350;
   map.getPane("riskTiles").style.pointerEvents = "none";
+  map.createPane("overviewRisks");
+  map.getPane("overviewRisks").style.zIndex = 420;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     pane: "baseTiles",
@@ -32,6 +34,112 @@
   let activeNames = [];
   let searchMarker = null;
   let clickMarker = null;
+  let localPprLayer = null;
+  let riversLayer = null;
+  let communesLayer = null;
+  let suppressNextMapClick = false;
+
+  function riskFamily(props = {}) {
+    const text = `${props.nomass || ""} ${props.code_alea || ""}`.toLowerCase();
+    return /ppri|inond|crue|seine|oise|epte|sausseron|aubette|presles/.test(text)
+      ? "Inondation"
+      : "Mouvement de terrain";
+  }
+
+  function riskColor(props = {}) {
+    return riskFamily(props) === "Inondation" ? "#1479c9" : "#e76f00";
+  }
+
+  function humanPlanName(props = {}) {
+    const catalog = window.PPR_DOCUMENTS?.[props.id_gaspar];
+    if (catalog?.title) return catalog.title;
+    return String(props.nomass || "Plan de prévention des risques")
+      .replace(/^PM1_/, "")
+      .replace(/_ass$/i, "")
+      .replace(/PPRNMT/i, "PPR mouvements de terrain · ")
+      .replace(/PPRI/i, "PPRI · ")
+      .replace(/R1113/i, "Périmètre R.111-3 · ")
+      .replace(/PER/i, "Périmètre de risque · ")
+      .replace(/([a-zà-ÿ])([A-Z])/g, "$1 $2");
+  }
+
+  async function loadLocalContext() {
+    try {
+      const [pprResponse, riversResponse, communesResponse] = await Promise.all([
+        fetch("data/ppr_perimetres_95.geojson"),
+        fetch("data/rivieres_95.geojson"),
+        fetch("data/communes_95.geojson")
+      ]);
+      if (!pprResponse.ok) throw new Error("Périmètres PPR indisponibles");
+      const [pprData, riversData, communesData] = await Promise.all([
+        pprResponse.json(),
+        riversResponse.ok ? riversResponse.json() : null,
+        communesResponse.ok ? communesResponse.json() : null
+      ]);
+
+      if (communesData) {
+        communesLayer = L.geoJSON(communesData, {
+          pane: "overlayPane",
+          interactive: false,
+          style: { color: "#59616b", weight: 0.7, opacity: 0.42, fillOpacity: 0 }
+        }).addTo(map);
+      }
+      if (riversData) {
+        riversLayer = L.geoJSON(riversData, {
+          pane: "overlayPane",
+          interactive: false,
+          style: { color: "#2f80c9", weight: 1.1, opacity: 0.58 }
+        }).addTo(map);
+      }
+
+      localPprLayer = L.geoJSON(pprData, {
+        pane: "overviewRisks",
+        style(feature) {
+          const color = riskColor(feature.properties);
+          return { color, fillColor: color, weight: 2.2, opacity: 0.96, fillOpacity: 0.34 };
+        },
+        onEachFeature(feature, layer) {
+          const props = feature.properties || {};
+          layer.bindTooltip(humanPlanName(props), { sticky: true, direction: "top" });
+          layer.on({
+            mouseover() { layer.setStyle({ weight: 3.5, fillOpacity: 0.52 }); },
+            mouseout() { localPprLayer.resetStyle(layer); },
+            click(event) {
+              suppressNextMapClick = true;
+              L.DomEvent.stopPropagation(event);
+              openLocalRisk(feature, event.latlng);
+              setTimeout(() => { suppressNextMapClick = false; }, 0);
+            }
+          });
+        },
+        filter(feature) {
+          const family = riskFamily(feature.properties);
+          return family === "Inondation" ? preferences.inond : preferences.mvt;
+        }
+      }).addTo(map);
+      setStatus(`${pprData.features.length} périmètres PPR chargés`);
+    } catch (error) {
+      console.error(error);
+      setStatus("Périmètres locaux indisponibles", false);
+    }
+  }
+
+  function refreshLocalPprs() {
+    if (!localPprLayer) return;
+    fetch("data/ppr_perimetres_95.geojson")
+      .then((response) => response.json())
+      .then((data) => {
+        localPprLayer.clearLayers();
+        localPprLayer.addData({
+          ...data,
+          features: data.features.filter((feature) => {
+            const family = riskFamily(feature.properties);
+            return family === "Inondation" ? preferences.inond : preferences.mvt;
+          })
+        });
+      })
+      .catch(console.warn);
+  }
 
   function setStatus(text, ok = true) {
     $("#live-text").textContent = text;
@@ -61,6 +169,7 @@
     preferences[family] = input.checked;
     input.addEventListener("change", () => {
       preferences[family] = input.checked;
+      if (family === "inond" || family === "mvt") refreshLocalPprs();
       updateScaleDisplay();
     });
     row.addEventListener("click", (event) => {
@@ -82,11 +191,22 @@
 
   function updateScaleDisplay() {
     const detail = map.getZoom() >= 13;
-    setLayerVisible("PPRN_PERIMETRE_INOND", preferences.inond && !detail);
-    setLayerVisible("PPRN_PERIMETRE_MVT", preferences.mvt && !detail);
+    setLayerVisible("PPRN_PERIMETRE_INOND", false);
+    setLayerVisible("PPRN_PERIMETRE_MVT", false);
     setLayerVisible("PPRN_ZONE_INOND", preferences.inond && detail);
     setLayerVisible("PPRN_ZONE_MVT", preferences.mvt && detail);
     setLayerVisible("ALEARG_REALISE", preferences.argile && detail);
+    if (localPprLayer) {
+      localPprLayer.setStyle((feature) => {
+        const color = riskColor(feature.properties);
+        return {
+          color, fillColor: color,
+          weight: detail ? 1.5 : 2.2,
+          opacity: detail ? 0.72 : 0.96,
+          fillOpacity: detail ? 0.12 : 0.34
+        };
+      });
+    }
     refreshActiveLayers();
 
     const badge = $("#zoom-level");
@@ -267,6 +387,65 @@
       </div>`).join("");
   }
 
+  function combinedDocumentLinks(ppr) {
+    const remote = window.PPR_DOCUMENTS?.[ppr.idGaspar]?.documents?.length
+      ? documentLinks(ppr)
+      : "";
+    return remote || `<div class="notice">Aucun document PDF en ligne n’est actuellement rattaché à ce périmètre.</div>`;
+  }
+
+  async function openLocalRisk(feature, latlng) {
+    const props = feature.properties || {};
+    const family = riskFamily(props);
+    const place = await resolveCommune(latlng, props);
+    const idGaspar = props.id_gaspar || "";
+    const catalog = window.PPR_DOCUMENTS?.[idGaspar] || {};
+    const title = humanPlanName(props);
+    const ppr = {
+      idGaspar,
+      libPpr: title,
+      libBassinRisques: catalog.territory || place.city
+    };
+
+    if (clickMarker) map.removeLayer(clickMarker);
+    clickMarker = L.circleMarker(latlng, {
+      radius: 7, color: "#000091", weight: 3, fillColor: "#fff", fillOpacity: 1
+    }).addTo(map);
+
+    $("#drawer-title").textContent = place.city;
+    $("#drawer-sub").textContent = title;
+    $("#summary-status").textContent = family;
+    $("#summary-date").textContent = idGaspar || "Donnée officielle";
+    $("#summary-text").textContent = summaryFor(family, props.typeass);
+
+    const firstDocument = catalog.documents?.[0]?.url || catalog.fiche || "";
+    $("#btn-export").href = firstDocument || "#";
+    $("#btn-export").textContent = firstDocument ? "Lire le document principal" : "Aucun PDF direct disponible";
+    $("#btn-export").classList.toggle("disabled", !firstDocument);
+
+    $("#drawer-body").innerHTML = `
+      <div class="section-title">Synthèse de la zone cliquée</div>
+      <div class="block">
+        <div class="block-title">${escapeHtml(title)}</div>
+        <p class="risk-explainer">${escapeHtml(summaryFor(family, props.typeass))}</p>
+        <div class="data-grid">
+          <div class="data-row"><div class="l">Commune du clic</div><div class="v">${escapeHtml(place.city)}</div></div>
+          <div class="data-row"><div class="l">Code INSEE</div><div class="v">${escapeHtml(place.insee || "—")}</div></div>
+          <div class="data-row"><div class="l">Famille de risque</div><div class="v">${escapeHtml(family)}</div></div>
+          <div class="data-row"><div class="l">Nature du périmètre</div><div class="v">${escapeHtml(props.typeass || "Enveloppe du plan")}</div></div>
+          <div class="data-row"><div class="l">Identifiant GASPAR</div><div class="v">${escapeHtml(idGaspar || "—")}</div></div>
+        </div>
+      </div>
+      <div class="section-title">Documents officiels</div>
+      <div class="block">
+        <div class="block-title">${escapeHtml(catalog.title || title)}</div>
+        ${combinedDocumentLinks(ppr)}
+      </div>
+      <div class="notice">Le périmètre coloré indique l’emprise générale du plan. À partir du zoom 13, les zonages réglementaires détaillés de Géorisques se superposent. Les documents approuvés font foi.</div>`;
+    $("#drawer").classList.add("open");
+    setStatus("Zone et commune identifiées");
+  }
+
   async function openRisk(features, layerName, latlng) {
     const props = features[0] || {};
     const def = defs[layerName];
@@ -378,7 +557,9 @@
     await identify(L.latLng(lat, lng));
   }
 
-  map.on("click", (event) => identify(event.latlng));
+  map.on("click", (event) => {
+    if (!suppressNextMapClick) identify(event.latlng);
+  });
   $("#search-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const query = $("#search-input").value.trim();
@@ -391,4 +572,5 @@
   map.on("locationfound", (event) => identify(event.latlng));
   map.on("locationerror", () => setStatus("Localisation refusée", false));
   $("#drawer-close").addEventListener("click", () => $("#drawer").classList.remove("open"));
+  loadLocalContext().then(updateScaleDisplay);
 })();

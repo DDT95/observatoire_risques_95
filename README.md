@@ -1,5 +1,23 @@
 # Observatoire des risques du Val-d’Oise
 
+Version fusionnée : architecture de l’Observatoire du bâti et données locales
+de l’ancien atlas « Crues et risques ».
+
+## Fonctionnement
+
+- Au démarrage, 26 enveloppes PPR locales sont visibles et cliquables à
+  l’échelle du département.
+- À partir du zoom 13, les zonages réglementaires détaillés Géorisques se
+  superposent automatiquement.
+- Le clic affiche un repère, résout la commune et ouvre le panneau droit.
+- Chaque dossier utilise les liens officiels du catalogue Géorisques
+  (règlements, notes, cartes et actes disponibles).
+- Aucun PDF lourd n’est embarqué dans le dépôt GitHub.
+- Les contours des 183 communes et les cours d’eau fournissent le contexte.
+
+Les documents approuvés et leurs cartes annexées demeurent les références
+juridiques opposables.
+
 Application cartographique DDT95 consacrée aux PPRI, PPRN et aléas naturels.
 
 - même architecture graphique que l’Observatoire du bâti ;

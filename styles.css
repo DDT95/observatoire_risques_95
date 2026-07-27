@@ -177,6 +177,7 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 #map.leaflet-container.leaflet-grab{cursor:pointer}
 #map.leaflet-container.leaflet-dragging{cursor:grabbing}
 .leaflet-control a,.leaflet-control button{cursor:pointer!important}
+.leaflet-overviewRisks-pane path{cursor:pointer!important}
 .layer-swatch{width:16px;height:16px;border-radius:5px;border:2px solid rgba(15,23,42,.18);box-shadow:0 0 0 3px rgba(15,23,42,.04)}
 .swatch-inond{background:#4d74c9}.swatch-mvt{background:#b46a3c}.swatch-argile{background:#d7ad42}.swatch-perim{background:#9d77c9}
 .switch input{position:absolute;opacity:0;pointer-events:none}
