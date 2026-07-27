@@ -24,7 +24,7 @@ Application cartographique DDT95 consacrée aux PPRI, PPRN et aléas naturels.
 - recherche par adresse ou commune ;
 - zonages officiels Géorisques cliquables ;
 - synthèse dans un panneau latéral ;
-- accès direct aux arrêtés, règlements, notes et cartes PDF officiels ;
+- lecture des arrêtés, règlements, notes et cartes PDF officiels dans un nouvel onglet ;
 - périmètres PPRI/PPRN visibles à l’ouverture ;
 - bascule automatique vers les zonages réglementaires détaillés à partir du zoom 13.
 

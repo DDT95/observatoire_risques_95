@@ -383,7 +383,8 @@
           <strong>${escapeHtml(document.type)}</strong>
           <small>${escapeHtml(document.title || ppr.libPpr)} · ${escapeHtml(document.date || "date non renseignée")}</small>
         </div>
-        <a href="${escapeHtml(document.url)}" target="_blank" rel="noopener" download>Télécharger le PDF</a>
+        <a href="${escapeHtml(document.url)}" target="_blank" rel="noopener noreferrer"
+           aria-label="Lire ${escapeHtml(document.type)} dans un nouvel onglet">Lire le PDF ↗</a>
       </div>`).join("");
   }
 
@@ -494,7 +495,7 @@
 
     const primaryDocument = chosen ? window.PPR_DOCUMENTS?.[chosen.idGaspar]?.documents?.[0] : null;
     $("#btn-export").href = primaryDocument?.url || "#";
-    $("#btn-export").textContent = primaryDocument ? "Télécharger un document PDF" : "Aucun PDF direct disponible";
+    $("#btn-export").textContent = primaryDocument ? "Lire le document principal ↗" : "Aucun PDF direct disponible";
     $("#btn-export").classList.toggle("disabled", !primaryDocument);
 
     const pprHtml = displayedPprs.length
