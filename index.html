@@ -92,7 +92,7 @@
             <div class="source-monitor-row layer-row" data-layer="PPRN_PERIMETRE_INOND">
               <span class="layer-swatch swatch-perim"></span>
               <div><strong>Périmètres PPRI</strong><small>Emprise générale des plans</small></div>
-              <label class="switch"><input type="checkbox"><span></span></label>
+              <label class="switch"><input type="checkbox" checked><span></span></label>
             </div>
           </div>
         </div>
@@ -102,6 +102,10 @@
     <section class="map-zone">
       <div class="map-card">
         <div id="map"></div>
+        <div class="zoom-level" id="zoom-level" data-mode="overview" aria-live="polite">
+          <strong>Vue départementale</strong>
+          <span>Périmètres et zones principales</span>
+        </div>
         <div class="map-help" id="map-help">
           <b>Cliquez sur une zone</b>
           <span>Une synthèse et les documents officiels s’ouvrent à droite.</span>

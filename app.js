@@ -7,18 +7,21 @@
   const PREF = "https://www.val-doise.gouv.fr/Actions-de-l-Etat/Environnement-risques-et-nuisances/Prevention-Risques/Risques-naturels/Les-plans-de-prevention-des-risques-naturels-PPRN";
   const bounds95 = L.latLngBounds([48.82, 1.60], [49.25, 2.62]);
 
-  const map = L.map("map", { zoomControl: true, minZoom: 8, maxZoom: 19 });
+  const map = L.map("map", { zoomControl: true, maxZoom: 19 });
   map.fitBounds(bounds95);
+  map.createPane("baseTiles");
+  map.getPane("baseTiles").style.zIndex = 200;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
+    pane: "baseTiles",
     attribution: "© OpenStreetMap · Données Géorisques"
   }).addTo(map);
 
   const defs = {
-    PPRN_ZONE_INOND: { title: "Zonage réglementaire PPRI", family: "Inondation", opacity: 0.58 },
-    PPRN_ZONE_MVT: { title: "Zonage réglementaire PPRN", family: "Mouvement de terrain", opacity: 0.58 },
+    PPRN_ZONE_INOND: { title: "Zonage réglementaire PPRI", family: "Inondation", opacity: 0.78 },
+    PPRN_ZONE_MVT: { title: "Zonage réglementaire PPRN", family: "Mouvement de terrain", opacity: 0.78 },
     ALEARG_REALISE: { title: "Retrait-gonflement des argiles", family: "Mouvement de terrain", opacity: 0.48 },
-    PPRN_PERIMETRE_INOND: { title: "Périmètre de PPRI", family: "Inondation", opacity: 0.42 }
+    PPRN_PERIMETRE_INOND: { title: "Périmètre de PPRI", family: "Inondation", opacity: 0.62 }
   };
   const layers = {};
   let activeNames = [];
@@ -51,13 +54,44 @@
       else map.removeLayer(layers[name]);
       refreshActiveLayers();
     });
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("input, label")) return;
+      input.checked = !input.checked;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
   });
 
   function refreshActiveLayers() {
     activeNames = Object.keys(layers).filter((name) => map.hasLayer(layers[name]));
     setStatus(activeNames.length ? `${activeNames.length} couche${activeNames.length > 1 ? "s" : ""} active${activeNames.length > 1 ? "s" : ""}` : "Aucune couche active", activeNames.length > 0);
+    updateScaleDisplay();
+  }
+
+  function updateScaleDisplay() {
+    const zoom = map.getZoom();
+    const overview = zoom <= 10;
+    const transition = zoom === 11 || zoom === 12;
+    const exactOpacity = overview ? 0.46 : transition ? 0.64 : 0.84;
+    const perimeterOpacity = overview ? 0.72 : transition ? 0.42 : 0.18;
+
+    ["PPRN_ZONE_INOND", "PPRN_ZONE_MVT"].forEach((name) => {
+      if (layers[name]) layers[name].setOpacity(exactOpacity);
+    });
+    if (layers.PPRN_PERIMETRE_INOND) {
+      layers.PPRN_PERIMETRE_INOND.setOpacity(perimeterOpacity);
+    }
+
+    const badge = $("#zoom-level");
+    if (!badge) return;
+    badge.dataset.mode = overview ? "overview" : transition ? "transition" : "detail";
+    badge.innerHTML = overview
+      ? "<strong>Vue départementale</strong><span>Périmètres et zones principales</span>"
+      : transition
+        ? "<strong>Vue intermédiaire</strong><span>Les zonages précis apparaissent</span>"
+        : "<strong>Zonages détaillés</strong><span>Cliquez pour lire la réglementation</span>";
   }
   refreshActiveLayers();
+  map.on("zoomend", updateScaleDisplay);
 
   function escapeHtml(value) {
     return String(value ?? "")

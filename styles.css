@@ -122,7 +122,7 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 
 
 /* V9 — fond cartographique neutre et interface métier logement */
-.leaflet-tile-pane {
+.leaflet-baseTiles-pane {
   filter: grayscale(1) saturate(.18) brightness(1.08) contrast(.90);
 }
 .map-card {
@@ -160,7 +160,39 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 }
 
 /* Observatoire des risques — conserve la charte de l'Observatoire du bâti */
-.layer-row{grid-template-columns:auto minmax(0,1fr) auto!important;cursor:default}
+.layer-row{grid-template-columns:auto minmax(0,1fr) auto!important;cursor:pointer}
+.layer-row:hover{background:#f3f6ff;border-color:#cbd5ff}
+.layer-row .switch,.layer-row .switch span{cursor:pointer}
+#map.leaflet-container{cursor:pointer}
+#map.leaflet-container.leaflet-drag-target,
+#map.leaflet-container.leaflet-grab{cursor:pointer}
+#map.leaflet-container.leaflet-dragging{cursor:grabbing}
+.leaflet-control a,.leaflet-control button{cursor:pointer!important}
+.zoom-level{
+  position:absolute;
+  z-index:700;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%);
+  min-width:220px;
+  padding:9px 14px;
+  border:1px solid rgba(0,0,145,.18);
+  border-radius:14px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 7px 24px rgba(15,23,42,.14);
+  text-align:center;
+  pointer-events:none;
+  backdrop-filter:blur(8px);
+}
+.zoom-level strong,.zoom-level span{display:block}
+.zoom-level strong{color:var(--blue);font-size:12px}
+.zoom-level span{margin-top:2px;color:#475569;font-size:10px;font-weight:750}
+.zoom-level[data-mode="detail"]{border-color:rgba(0,100,80,.22)}
+.zoom-level[data-mode="detail"] strong{color:#006450}
+@media(max-width:560px){
+  .zoom-level{top:10px;min-width:190px;padding:7px 10px}
+  .zoom-level span{font-size:9px}
+}
 .layer-swatch{width:16px;height:16px;border-radius:5px;border:2px solid rgba(15,23,42,.18);box-shadow:0 0 0 3px rgba(15,23,42,.04)}
 .swatch-inond{background:#4d74c9}.swatch-mvt{background:#b46a3c}.swatch-argile{background:#d7ad42}.swatch-perim{background:#9d77c9}
 .switch input{position:absolute;opacity:0;pointer-events:none}
