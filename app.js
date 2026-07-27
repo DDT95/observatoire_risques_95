@@ -31,6 +31,7 @@
   const preferences = { inond: true, mvt: true, argile: false };
   let activeNames = [];
   let searchMarker = null;
+  let clickMarker = null;
 
   function setStatus(text, ok = true) {
     $("#live-text").textContent = text;
@@ -129,6 +130,15 @@
 
   async function identify(latlng) {
     if (!activeNames.length) return;
+    if (clickMarker) map.removeLayer(clickMarker);
+    clickMarker = L.circleMarker(latlng, {
+      radius: 7,
+      color: "#000091",
+      weight: 3,
+      fillColor: "#ffffff",
+      fillOpacity: 1,
+      pane: "markerPane"
+    }).addTo(map);
     setStatus("Lecture de la zone…");
     $("#progress-bar").style.width = "55%";
     const ordered = [...activeNames].reverse();
@@ -169,13 +179,54 @@
       .filter((props) => Object.keys(props).length);
   }
 
-  async function reverseGeocode(latlng) {
-    const url = `https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Géocodage indisponible");
-    const data = await response.json();
-    const p = data.features?.[0]?.properties || {};
-    return { city: p.city || p.municipality || "Commune non identifiée", insee: p.citycode || "", label: p.label || "" };
+  async function fetchJson(url, timeout = 6500) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function resolveCommune(latlng, featureProps = {}) {
+    const featureCity = valueFrom(featureProps, [
+      "nom_commune", "commune", "lib_commune", "nomcom", "nom_com"
+    ], "");
+    const featureInsee = valueFrom(featureProps, [
+      "code_insee", "codeinsee", "insee_com", "insee", "code_com"
+    ], "");
+    if (featureCity && featureCity !== "Non renseigné" && /^\d{5}$/.test(String(featureInsee))) {
+      return { city: featureCity, insee: String(featureInsee), label: featureCity };
+    }
+
+    // Source principale : référentiel officiel des communes, interrogé au point cliqué.
+    try {
+      const url = `https://geo.api.gouv.fr/communes?lat=${encodeURIComponent(latlng.lat)}&lon=${encodeURIComponent(latlng.lng)}&fields=nom,code&format=json`;
+      const communes = await fetchJson(url);
+      const commune = Array.isArray(communes) ? communes[0] : null;
+      if (commune?.nom && commune?.code) {
+        return { city: commune.nom, insee: String(commune.code), label: commune.nom };
+      }
+    } catch (error) {
+      console.warn("Résolution commune (API Découpage administratif)", error);
+    }
+
+    // Secours : géocodage inverse IGN.
+    try {
+      const url = `https://data.geopf.fr/geocodage/reverse?lon=${encodeURIComponent(latlng.lng)}&lat=${encodeURIComponent(latlng.lat)}&limit=1`;
+      const data = await fetchJson(url);
+      const p = data.features?.[0]?.properties || {};
+      const city = p.city || p.city_name || p.municipality || p.commune;
+      const insee = p.citycode || p.city_code || p.insee;
+      if (city && insee) return { city, insee: String(insee), label: p.label || city };
+    } catch (error) {
+      console.warn("Résolution commune (géocodage IGN)", error);
+    }
+
+    return { city: "Commune non déterminée", insee: "", label: "" };
   }
 
   async function loadPprs(codeInsee) {
@@ -219,8 +270,7 @@
   async function openRisk(features, layerName, latlng) {
     const props = features[0] || {};
     const def = defs[layerName];
-    let place = { city: "Val-d’Oise", insee: "", label: "" };
-    try { place = await reverseGeocode(latlng); } catch (error) { console.warn(error); }
+    const place = await resolveCommune(latlng, props);
 
     let pprs = [];
     try { pprs = await loadPprs(place.insee); } catch (error) { console.warn(error); }
@@ -232,7 +282,27 @@
       .map((item) => valueFrom(item, ["id_gaspar", "idGaspar"], ""))
       .filter(Boolean);
     const matched = pprs.filter((p) => clickedGasparIds.includes(p.idGaspar));
-    const displayedPprs = matched.length ? matched : relevant.length ? relevant : pprs;
+    const catalogMatches = clickedGasparIds
+      .filter((id) => window.PPR_DOCUMENTS?.[id])
+      .map((id) => {
+        const catalog = window.PPR_DOCUMENTS[id];
+        return {
+          idGaspar: id,
+          libPpr: catalog.title || id,
+          libBassinRisques: catalog.territory || place.city,
+          modeleProcedure: catalog.type || "",
+          dateModification: "",
+          etatRevision: false,
+          zonageReglementaire: { zoneRegExists: true }
+        };
+      });
+    const displayedPprs = matched.length
+      ? matched
+      : catalogMatches.length
+        ? catalogMatches
+        : relevant.length
+          ? relevant
+          : pprs;
     const chosen = displayedPprs[0] || null;
     const zoneName = valueFrom(props, ["nom", "libelle", "codezone", "code_zone", "typezone", "lib_ppr"], def.title);
     const rule = valueFrom(props, ["libelle", "type_reg", "typereg", "reglement", "codezone", "libelle_sous_etat"], chosen?.zonageReglementaire?.listTypeReg?.[0]?.libelle || "Zonage à vérifier");
