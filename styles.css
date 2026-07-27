@@ -259,8 +259,6 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .about-credit{padding:12px;border-radius:14px;background:#f3f6ff;color:#263166!important}
 .about-small{font-size:11px!important;color:#64748b!important}
 .export-hint{font-size:11px;color:#64748b;margin-top:7px}
-.qpv-label{background:rgba(111,76,155,.88)!important;color:#fff!important;border:0!important;border-radius:999px!important;font-size:10px!important;font-weight:900!important;padding:3px 7px!important}
-.qpv-label:before{display:none!important}
 @media(max-width:560px){.actions{grid-template-columns:1fr}}
 
 
@@ -284,42 +282,6 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
   box-shadow:none;
   transform:none;
 }
-.qpv-legend{
-  position:absolute;
-  right:16px;
-  bottom:16px;
-  z-index:500;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:9px 11px;
-  border:1px solid rgba(255,255,255,.9);
-  border-radius:999px;
-  background:rgba(255,255,255,.92);
-  box-shadow:var(--shadow-soft);
-  color:#4b3566;
-  font-size:11px;
-  font-weight:900;
-}
-.qpv-swatch{
-  width:20px;
-  height:12px;
-  border:2px dashed var(--violet);
-  background:rgba(111,76,155,.08);
-  border-radius:3px;
-}
-.qpv-membership{
-  margin-top:8px;
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  padding:7px 10px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:950;
-}
-.qpv-membership.in{background:var(--violet-soft);color:var(--violet)}
-.qpv-membership.out{background:#eef2f7;color:#475569}
 .summary-cards{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -365,6 +327,22 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .connector-card .status.monthly{background:#f1f5ff;color:#000091}
 .connector-card p{font-size:11px;line-height:1.4;color:#64748b;margin:8px 0 0}
 .pdf-note{font-size:11px;color:#64748b;margin-top:7px}
+.errial-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:12px;
+  min-height:40px;
+  padding:0 14px;
+  border-radius:10px;
+  background:#000091;
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  text-decoration:none;
+  cursor:pointer;
+}
+.errial-link:hover{background:#1212ff;color:#fff}
 @media(max-width:650px){.connector-grid{grid-template-columns:1fr}}
 
 
@@ -402,7 +380,6 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .transaction-meta{font-size:11px;color:#64748b;line-height:1.45;margin-top:6px}
 .map-capture-mode .leaflet-control-container,
 .map-capture-mode .map-help,
-.map-capture-mode .qpv-legend,
 .map-capture-mode .map-parcel-legend{display:none!important}
 
 
@@ -496,7 +473,7 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 }
 
 
-/* V20 — carte prioritaire et QPV renforcés */
+/* Carte prioritaire */
 .map-zone{
   display:block;
   min-height:0;
@@ -512,221 +489,6 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .kpis{
   display:none!important;
 }
-.qpv-legend{
-  right:16px;
-  bottom:16px;
-  padding:10px 13px;
-  background:rgba(255,255,255,.96);
-  border:1px solid #ddcfee;
-  color:#4b3566;
-  font-size:11px;
-}
-.qpv-swatch{
-  width:22px;
-  height:13px;
-  border:2px dashed #6f4c9b;
-  background:rgba(111,76,155,.12);
-}
-.qpv-label{
-  font-size:11px!important;
-  padding:4px 8px!important;
-}
-.qpv-status-panel{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin:0 0 12px;
-  padding:12px 14px;
-  border-radius:14px;
-  border:1px solid #ded4ea;
-  background:#faf7fd;
-}
-.qpv-status-panel .label{
-  font-size:10px;
-  text-transform:uppercase;
-  letter-spacing:.06em;
-  color:#6b5a7f;
-  font-weight:950;
-}
-.qpv-status-panel .value{
-  font-size:14px;
-  font-weight:1000;
-  color:#4b3566;
-  text-align:right;
-}
-.qpv-status-panel.out{
-  border-color:#dfe5ef;
-  background:#f7f9fc;
-}
-.qpv-status-panel.out .value{
-  color:#475569;
-}
 @media(max-width:900px){
   #map{min-height:560px}
-}
-
-.qpv-legend{display:none!important;}
-
-/* Correctif demandé : aucune information QPV dans la page HTML. */
-.qpv-legend,
-.qpv-membership,
-.qpv-status-panel,
-.context-banner {
-  display: none !important;
-}
-
-.qpv-label {
-  display: block !important;
-  padding: 5px 8px !important;
-  border: 1px solid #e0b4b0 !important;
-  border-radius: 8px !important;
-  background: rgba(255,255,255,.96) !important;
-  color: #8e2721 !important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  box-shadow: 0 4px 12px rgba(15,23,42,.12) !important;
-}
-
-.leaflet-qpv-pane path {
-  vector-effect: non-scaling-stroke;
-}
-
-
-/* QPV locaux DDT95 : légende et statut métier */
-.qpv-map-legend{
-  position:absolute;
-  z-index:800;
-  right:14px;
-  bottom:14px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  width:max-content;
-  max-width:none;
-  white-space:nowrap;
-  padding:7px 10px;
-  border:1px solid rgba(196,59,50,.28);
-  border-radius:10px;
-  background:rgba(255,255,255,.92);
-  box-shadow:0 4px 14px rgba(15,23,42,.09);
-  color:#5f2c28;
-  font-size:10px;
-  font-weight:800;
-  line-height:1;
-  pointer-events:none;
-}
-.qpv-map-swatch{
-  flex:none;
-  width:22px;
-  height:12px;
-  border:2px dashed #c43b32;
-  border-radius:3px;
-  background:rgba(196,59,50,.10);
-}
-
-.qpv-status-panel{
-  display:flex!important;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
-  margin:0 0 12px;
-  padding:12px 14px;
-  border:1px solid #e4c8c5;
-  border-radius:14px;
-  background:#fff8f7;
-}
-.qpv-status-panel .label{
-  color:#8e2721;
-  font-size:10px;
-  font-weight:1000;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-}
-.qpv-status-panel .source{
-  margin-top:3px;
-  color:#7b6a68;
-  font-size:9px;
-}
-.qpv-status-panel .value{
-  color:#8e2721;
-  font-size:13px;
-  font-weight:1000;
-  text-align:right;
-}
-.qpv-status-panel.out{
-  border-color:#dfe5ef;
-  background:#f8fafc;
-}
-.qpv-status-panel.out .label,
-.qpv-status-panel.out .value{
-  color:#475569;
-}
-
-@media(max-width:700px){
-  .qpv-map-legend{
-    right:8px;
-    bottom:8px;
-    font-size:9px;
-  }
-  .qpv-status-panel{
-    align-items:flex-start;
-    flex-direction:column;
-  }
-  .qpv-status-panel .value{
-    text-align:left;
-  }
-}
-
-
-/* Bouton de visibilité QPV */
-.qpv-toggle-control{
-  border:none!important;
-  box-shadow:none!important;
-  background:transparent!important;
-}
-.qpv-toggle-button{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  min-height:34px;
-  padding:0 11px;
-  border:1px solid rgba(196,59,50,.30);
-  border-radius:10px;
-  background:rgba(255,255,255,.96);
-  box-shadow:0 4px 14px rgba(15,23,42,.10);
-  color:#7d2a25;
-  font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
-  cursor:pointer;
-  white-space:nowrap;
-}
-.qpv-toggle-button:hover{
-  background:#fff7f6;
-}
-.qpv-toggle-button.off{
-  border-color:#d9dee8;
-  color:#475569;
-  background:rgba(255,255,255,.94);
-}
-.qpv-toggle-swatch{
-  width:19px;
-  height:11px;
-  border:2px dashed #c43b32;
-  border-radius:3px;
-  background:rgba(196,59,50,.10);
-}
-.qpv-toggle-button.off .qpv-toggle-swatch{
-  border-color:#94a3b8;
-  background:transparent;
-}
-.qpv-map-legend.hidden{
-  display:none!important;
-}
-
-@media(max-width:700px){
-  .qpv-toggle-button{
-    min-height:32px;
-    padding:0 9px;
-    font-size:9px;
-  }
 }

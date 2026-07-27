@@ -396,6 +396,28 @@
     return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}`;
   }
 
+  function errialUrl() {
+    return "https://errial.georisques.gouv.fr/#/";
+  }
+
+  function errialBlock(latlng, place) {
+    const coordinates = latlng
+      ? `${Number(latlng.lat).toFixed(6)}, ${Number(latlng.lng).toFixed(6)}`
+      : "—";
+    return `
+      <div class="section-title">État des risques à la parcelle</div>
+      <div class="block errial-block">
+        <div class="block-title">Poursuivre avec ERRIAL</div>
+        <p class="risk-explainer">Le service officiel ERRIAL permet de rechercher une adresse ou une parcelle et de produire un état des risques complet.</p>
+        <div class="data-grid">
+          <div class="data-row"><div class="l">Commune repérée</div><div class="v">${escapeHtml(place?.city || "—")}</div></div>
+          <div class="data-row"><div class="l">Point cliqué</div><div class="v">${escapeHtml(coordinates)}</div></div>
+        </div>
+        <a class="errial-link" href="${errialUrl()}" target="_blank" rel="noopener noreferrer">Établir l’état des risques avec ERRIAL ↗</a>
+        <div class="pdf-note">ERRIAL s’ouvre dans un nouvel onglet. Saisissez l’adresse ou sélectionnez la parcelle correspondant au point cliqué.</div>
+      </div>`;
+  }
+
   function documentLinks(ppr, place) {
     const catalog = window.PPR_DOCUMENTS?.[ppr.idGaspar];
     const documents = documentsForPlace(ppr, place);
@@ -472,6 +494,7 @@
         <div class="block-title">${escapeHtml(catalog.title || title)}</div>
         ${combinedDocumentLinks(ppr, place)}
       </div>
+      ${errialBlock(latlng, place)}
       <div class="notice">Le périmètre coloré indique l’emprise générale du plan. À partir du zoom 13, les zonages réglementaires détaillés de Géorisques se superposent. Les documents approuvés font foi.</div>`;
     $("#drawer").classList.add("open");
     setStatus("Zone et commune identifiées");
@@ -562,6 +585,7 @@
       </div>
       <div class="section-title">Plans et documents officiels</div>
       ${pprHtml}
+      ${errialBlock(latlng, place)}
       <div class="notice">Information cartographique indicative. Les cartes et règlements approuvés annexés aux arrêtés préfectoraux demeurent opposables.</div>`;
     $("#drawer").classList.add("open");
     setStatus("Zone identifiée");
