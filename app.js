@@ -5,7 +5,7 @@
   const WMS = "https://www.georisques.gouv.fr/services";
   const API = "https://www.georisques.gouv.fr/api/v1";
   const PREF = "https://www.val-doise.gouv.fr/Actions-de-l-Etat/Environnement-risques-et-nuisances/Prevention-Risques/Risques-naturels/Les-plans-de-prevention-des-risques-naturels-PPRN";
-  const bounds95 = L.latLngBounds([48.82, 1.60], [49.25, 2.62]);
+  const bounds95 = L.latLngBounds([48.89, 1.60], [49.25, 2.62]);
 
   const map = L.map("map", { zoomControl: true, minZoom: 8, maxZoom: 19 });
   map.fitBounds(bounds95);
@@ -14,6 +14,9 @@
   map.createPane("riskTiles");
   map.getPane("riskTiles").style.zIndex = 350;
   map.getPane("riskTiles").style.pointerEvents = "none";
+  map.createPane("departmentMask");
+  map.getPane("departmentMask").style.zIndex = 260;
+  map.getPane("departmentMask").style.pointerEvents = "none";
   map.createPane("overviewRisks");
   map.getPane("overviewRisks").style.zIndex = 420;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -78,11 +81,24 @@
       ]);
 
       if (communesData) {
+        const holes = [];
+        communesData.features.forEach((feature) => {
+          const geometry = feature.geometry;
+          if (geometry?.type === "Polygon") holes.push(geometry.coordinates[0]);
+          if (geometry?.type === "MultiPolygon") geometry.coordinates.forEach((polygon) => holes.push(polygon[0]));
+        });
+        L.geoJSON({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[[-180,-85],[180,-85],[180,85],[-180,85],[-180,-85]], ...holes] } }, {
+          pane: "departmentMask",
+          interactive: false,
+          style: { stroke: false, fillColor: "#eef1f5", fillOpacity: 0.94, fillRule: "evenodd" }
+        }).addTo(map);
         communesLayer = L.geoJSON(communesData, {
           pane: "overlayPane",
           interactive: false,
           style: { color: "#59616b", weight: 0.7, opacity: 0.42, fillOpacity: 0 }
         }).addTo(map);
+        const departmentBounds = communesLayer.getBounds();
+        if (departmentBounds.isValid()) map.fitBounds(departmentBounds, { padding: [28, 28], animate: false });
       }
       if (riversData) {
         riversLayer = L.geoJSON(riversData, {
@@ -628,7 +644,7 @@
     try { await search(query); }
     catch (error) { setStatus(error.message || "Recherche impossible", false); }
   });
-  $("#btn-valdoise").addEventListener("click", () => map.fitBounds(bounds95));
+  $("#btn-valdoise").addEventListener("click", () => map.fitBounds(communesLayer?.getBounds?.().isValid() ? communesLayer.getBounds() : bounds95, { padding: [28, 28] }));
   $("#btn-locate").addEventListener("click", () => map.locate({ setView: true, maxZoom: 16 }));
   map.on("locationfound", (event) => identify(event.latlng));
   map.on("locationerror", () => setStatus("Localisation refusée", false));
