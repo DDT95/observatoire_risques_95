@@ -1,3 +1,6 @@
+@font-face{font-family:"Marianne";src:url("fonts/Marianne-Regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Marianne";src:url("fonts/Marianne-Medium.woff2") format("woff2");font-weight:500 600;font-style:normal;font-display:swap}
+@font-face{font-family:"Marianne";src:url("fonts/Marianne-Bold.woff2") format("woff2");font-weight:700 1000;font-style:normal;font-display:swap}
 :root{
   --blue:#000091;
   --blue-deep:#070047;
@@ -45,12 +48,12 @@ button{cursor:pointer}
 .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:950;color:var(--blue)}
 h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--blue-deep)}
 .subtitle{font-size:14px;color:var(--muted)}.subtitle strong{color:var(--ink)}
-.livebox{display:flex;align-items:center;gap:10px;min-width:275px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 14px;box-shadow:var(--shadow-soft)}
-.live-dot{width:13px;height:13px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 5px rgba(184,117,42,.14)}
-.live-dot.ok{background:var(--green);box-shadow:0 0 0 5px rgba(24,117,60,.13)}
-.live-dot.ko{background:var(--red);box-shadow:0 0 0 5px rgba(198,95,82,.12)}
-.live-text{font-size:13px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.live-sub{font-size:11px;color:var(--muted)}
+.livebox{display:flex;align-items:center;gap:12px;min-width:275px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:12px 18px;box-shadow:var(--shadow-soft)}
+.live-dot{width:11px;height:11px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px rgba(184,117,42,.14)}
+.live-dot.ok{background:var(--green);box-shadow:0 0 0 4px rgba(24,117,60,.13)}
+.live-dot.ko{background:var(--red);box-shadow:0 0 0 4px rgba(198,95,82,.12)}
+.live-text{font-size:13px;font-weight:800;color:var(--blue-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-sub{font-size:11px;font-weight:600;color:var(--muted)}
 .progress{height:3px;background:#e6ebf4}.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),#6a6af4,var(--cyan));transition:width .25s}
 .main{min-height:0;display:grid;grid-template-columns:var(--side) minmax(0,1fr);gap:16px;padding:16px}
 .panel{min-height:0;background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(22px);display:flex;flex-direction:column;overflow:hidden}
