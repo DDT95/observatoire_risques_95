@@ -645,9 +645,6 @@
     catch (error) { setStatus(error.message || "Recherche impossible", false); }
   });
   $("#btn-valdoise").addEventListener("click", () => map.fitBounds(communesLayer?.getBounds?.().isValid() ? communesLayer.getBounds() : bounds95, { padding: [28, 28] }));
-  $("#btn-locate").addEventListener("click", () => map.locate({ setView: true, maxZoom: 16 }));
-  map.on("locationfound", (event) => identify(event.latlng));
-  map.on("locationerror", () => setStatus("Localisation refusée", false));
   $("#drawer-close").addEventListener("click", () => $("#drawer").classList.remove("open"));
   loadLocalContext().then(updateScaleDisplay);
 })();
