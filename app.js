@@ -647,4 +647,11 @@
   $("#btn-valdoise").addEventListener("click", () => map.fitBounds(communesLayer?.getBounds?.().isValid() ? communesLayer.getBounds() : bounds95, { padding: [28, 28] }));
   $("#drawer-close").addEventListener("click", () => $("#drawer").classList.remove("open"));
   loadLocalContext().then(updateScaleDisplay);
+
+  // Lecture seule pour la fenêtre d'impression (print.html) : aucune donnée
+  // ni fonction n'est dupliquée, print.js lit cet état via
+  // window.opener.risquesPrintApp une fois ouverte depuis cette page.
+  window.risquesPrintApp = { preferences, riskColor, riskFamily };
+  const printButton = $("#btn-print-map");
+  if (printButton) printButton.addEventListener("click", () => window.open("print.html", "_blank"));
 })();

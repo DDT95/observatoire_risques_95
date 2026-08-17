@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Impression — Risques majeurs du Val-d’Oise</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="print.css">
+</head>
+<body>
+  <div class="pdf-status" id="pdfStatus">Préparation du PDF…</div>
+  <div class="print-page" id="printPage">
+    <header class="print-header">
+      <img class="print-logo" src="prefet-val-doise.svg" alt="Préfet du Val-d’Oise">
+      <div class="print-header-text">
+        <h1 id="printTitle">Chargement…</h1>
+        <p id="printSubtitle">Val-d’Oise · PPRI · PPRN · inondations · mouvements de terrain</p>
+      </div>
+    </header>
+    <div class="print-map">
+      <div id="printMapCanvas"></div>
+      <div class="print-legend" id="printLegend"></div>
+    </div>
+    <footer class="print-footer">
+      <div class="print-sources" id="printSources"></div>
+      <div class="print-scale" id="printScale"></div>
+      <div class="print-reference"></div>
+    </footer>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="print.js"></script>
+</body>
+</html>
