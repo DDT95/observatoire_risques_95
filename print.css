@@ -50,7 +50,7 @@ html,body{margin:0;background:#8b93a1;font-family:Marianne,Arial,sans-serif}
 .scale-ticks span{position:absolute;top:1px;transform:translateX(-50%);white-space:nowrap}
 .scale-ticks .scale-unit{font-weight:700;transform:translateX(4px)}
 
-.print-reference{font-size:7pt;color:#333;text-align:right;align-self:stretch;border-left:.3mm solid #111;padding-left:4mm;display:flex;align-items:center;justify-content:flex-end}
+.print-reference{font-size:7pt;color:#333;text-align:right;align-self:stretch;min-width:40mm;border-left:.3mm solid #111;padding-left:4mm;display:flex;align-items:center;justify-content:flex-end}
 
 @media print{
   @page{size:A3 landscape;margin:0}
