@@ -8,7 +8,7 @@
   const bounds95 = L.latLngBounds([48.89, 1.60], [49.25, 2.62]);
 
   const map = L.map("map", { zoomControl: true, minZoom: 8, maxZoom: 19 });
-  map.fitBounds(bounds95);
+  map.fitBounds(bounds95, { padding: [8, 8] });
   map.createPane("baseTiles");
   map.getPane("baseTiles").style.zIndex = 200;
   map.createPane("riskTiles");
@@ -98,7 +98,7 @@
           style: { color: "#59616b", weight: 0.7, opacity: 0.42, fillOpacity: 0 }
         }).addTo(map);
         const departmentBounds = communesLayer.getBounds();
-        if (departmentBounds.isValid()) map.fitBounds(departmentBounds, { padding: [28, 28], animate: false });
+        if (departmentBounds.isValid()) map.fitBounds(departmentBounds, { padding: [10, 10], animate: false });
       }
       if (riversData) {
         riversLayer = L.geoJSON(riversData, {
@@ -644,7 +644,7 @@
     try { await search(query); }
     catch (error) { setStatus(error.message || "Recherche impossible", false); }
   });
-  $("#btn-valdoise").addEventListener("click", () => map.fitBounds(communesLayer?.getBounds?.().isValid() ? communesLayer.getBounds() : bounds95, { padding: [28, 28] }));
+  $("#btn-valdoise").addEventListener("click", () => map.fitBounds(communesLayer?.getBounds?.().isValid() ? communesLayer.getBounds() : bounds95, { padding: [10, 10] }));
   $("#drawer-close").addEventListener("click", () => $("#drawer").classList.remove("open"));
   loadLocalContext().then(updateScaleDisplay);
 
