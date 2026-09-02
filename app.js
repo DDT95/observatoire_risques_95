@@ -33,14 +33,25 @@
     ALEARG_REALISE: { title: "Retrait-gonflement des argiles", family: "Mouvement de terrain", opacity: 0.58 }
   };
   const layers = {};
-  const preferences = { inond: true, mvt: true, argile: false };
+  const preferences = { inond: true, mvt: true, argile: false, ruissellement: false, tri: false, azi: false };
   let activeNames = [];
   let searchMarker = null;
   let clickMarker = null;
   let localPprLayer = null;
   let riversLayer = null;
   let communesLayer = null;
+  let communesGeo = null;
+  let ruissellementLayer = null;
   let suppressNextMapClick = false;
+
+  const gasparLayers = { tri: null, azi: null };
+  const gasparCache = { tri: null, azi: null };
+  const gasparStyle = { tri: "#0f8b8d", azi: "#1479c9" };
+  const gasparLabel = { tri: "TRI", azi: "AZI" };
+  const gasparExplain = {
+    tri: "Un Territoire à Risque important d’Inondation (TRI) est un secteur où l’État concentre l’évaluation et la gestion du risque d’inondation, au titre de la directive européenne Inondation (2007/60/CE). Son classement ne dispense pas de consulter le PPRI applicable, qui reste la référence réglementaire.",
+    azi: "L’Atlas des Zones Inondables (AZI) cartographie l’emprise des inondations historiques ou modélisées, à titre de connaissance. Il n’a pas de portée réglementaire directe : c’est le PPRI, lorsqu’il existe, qui fixe les règles applicables."
+  };
 
   function riskFamily(props = {}) {
     const text = `${props.nomass || ""} ${props.code_alea || ""}`.toLowerCase();
@@ -81,6 +92,7 @@
       ]);
 
       if (communesData) {
+        communesGeo = communesData;
         const holes = [];
         communesData.features.forEach((feature) => {
           const geometry = feature.geometry;
@@ -157,6 +169,194 @@
       .catch(console.warn);
   }
 
+  function openRuissellementFeature(feature, latlng) {
+    const props = feature.properties || {};
+    if (clickMarker) map.removeLayer(clickMarker);
+    clickMarker = L.circleMarker(latlng, {
+      radius: 7, color: "#000091", weight: 3, fillColor: "#fff", fillOpacity: 1
+    }).addTo(map);
+
+    $("#drawer-title").textContent = "Axe de ruissellement";
+    $("#drawer-sub").textContent = props.Nom || "Trajectoire de l’eau de pluie";
+    $("#summary-status").textContent = "Inondation";
+    $("#summary-date").textContent = "DDT 95 · 21 septembre 2021";
+    $("#summary-text").textContent = "Cet axe représente une trajectoire probable du ruissellement concentré selon la pente et le relief. Il permet d’anticiper les secteurs exposés aux coulées de boue ou à l’arrivée rapide d’eau lors de fortes pluies. Ce n’est ni un cours d’eau permanent, ni un zonage réglementaire.";
+    $("#btn-export").href = "#";
+    $("#btn-export").textContent = "Aucun document réglementaire associé";
+    $("#btn-export").classList.add("disabled");
+
+    $("#drawer-body").innerHTML = `
+      <div class="section-title">Caractéristiques de l’axe</div>
+      <div class="block">
+        <div class="data-grid">
+          <div class="data-row"><div class="l">Identifiant</div><div class="v">${escapeHtml(props.Nom || "—")}</div></div>
+          <div class="data-row"><div class="l">Longueur estimée</div><div class="v">${props.GCCalculat ? `${Math.round(props.GCCalculat)} m` : "—"}</div></div>
+          <div class="data-row"><div class="l">Bassin versant</div><div class="v">${escapeHtml(props.code || "—")}</div></div>
+        </div>
+      </div>
+      <div class="notice">Axe de ruissellement DDT 95 (21 septembre 2021). À croiser avec le PPRI et les zones argileuses pour une lecture complète du risque d’inondation par ruissellement.</div>`;
+    $("#drawer").classList.add("open");
+    setStatus("Axe de ruissellement identifié");
+  }
+
+  async function toggleRuissellement(visible) {
+    const control = document.querySelector('.layer-row[data-family="ruissellement"] input');
+    if (!visible) {
+      if (ruissellementLayer) map.removeLayer(ruissellementLayer);
+      setStatus("Axes de ruissellement masqués");
+      return;
+    }
+    try {
+      if (control) control.disabled = true;
+      if (!ruissellementLayer) {
+        setStatus("Chargement des axes de ruissellement…");
+        const response = await fetch("data/axes_ruissellement.geojson");
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        ruissellementLayer = L.geoJSON(data, {
+          pane: "overviewRisks",
+          style: { color: "#e1000f", weight: 1.4, opacity: 0.78 },
+          onEachFeature(feature, layer) {
+            layer.bindTooltip(feature.properties?.Nom || "Axe de ruissellement", { sticky: true });
+            layer.on("click", (event) => {
+              suppressNextMapClick = true;
+              L.DomEvent.stopPropagation(event);
+              openRuissellementFeature(feature, event.latlng);
+              setTimeout(() => { suppressNextMapClick = false; }, 0);
+            });
+          }
+        });
+      }
+      ruissellementLayer.addTo(map);
+      setStatus(`${ruissellementLayer.getLayers().length} axes de ruissellement affichés`);
+    } catch (error) {
+      console.error(error);
+      setStatus("Axes de ruissellement indisponibles", false);
+      if (control) control.checked = false;
+      preferences.ruissellement = false;
+    } finally {
+      if (control) control.disabled = false;
+    }
+  }
+
+  function gasparItemRows(item) {
+    return Object.entries(item)
+      .filter(([, value]) => value !== null && value !== undefined && value !== "" && typeof value !== "object")
+      .slice(0, 8)
+      .map(([key, value]) => `<div class="data-row"><div class="l">${escapeHtml(key.replace(/_/g, " "))}</div><div class="v">${escapeHtml(String(value))}</div></div>`)
+      .join("");
+  }
+
+  function openGasparCommune(family, feature, latlng) {
+    const props = feature.properties || {};
+    const items = props.gasparItems || [];
+    const place = { city: props.nom, insee: props.code };
+    const label = gasparLabel[family];
+
+    if (clickMarker) map.removeLayer(clickMarker);
+    clickMarker = L.circleMarker(latlng, {
+      radius: 7, color: "#000091", weight: 3, fillColor: "#fff", fillOpacity: 1
+    }).addTo(map);
+
+    $("#drawer-title").textContent = place.city;
+    $("#drawer-sub").textContent = `${label} · ${items.length} procédure${items.length > 1 ? "s" : ""} recensée${items.length > 1 ? "s" : ""}`;
+    $("#summary-status").textContent = "Inondation";
+    $("#summary-date").textContent = "Donnée officielle GASPAR";
+    $("#summary-text").textContent = gasparExplain[family];
+    $("#btn-export").href = errialUrl();
+    $("#btn-export").textContent = "Établir l’état des risques avec ERRIAL ↗";
+    $("#btn-export").classList.remove("disabled");
+
+    $("#drawer-body").innerHTML = `
+      <div class="section-title">${label} recensé(s) pour cette commune</div>
+      ${items.map((item) => `
+        <div class="block">
+          <div class="block-title">${escapeHtml(item.libelle || item.lib || item.nom || label)}</div>
+          <div class="data-grid">${gasparItemRows(item)}</div>
+        </div>`).join("") || `<div class="notice">Aucun détail publié par l’API Géorisques pour cette procédure ; la commune est néanmoins classée ${escapeHtml(label)}.</div>`}
+      ${errialBlock(latlng, place)}
+      <div class="notice">Classement ${escapeHtml(label)} issu de l’API Géorisques (base GASPAR). Il complète mais ne remplace pas la lecture du PPRI et de son règlement approuvé.</div>`;
+    $("#drawer").classList.add("open");
+    setStatus("Commune identifiée");
+  }
+
+  async function fetchGasparCommune(family, codeInsee) {
+    const response = await fetch(`${API}/gaspar/${family}?codeInsee=${encodeURIComponent(codeInsee)}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    return data.content || data.data || (Array.isArray(data) ? data : []);
+  }
+
+  async function buildGasparLayer(family) {
+    if (!communesGeo?.features?.length) throw new Error("Communes indisponibles");
+    setStatus(`Chargement ${gasparLabel[family]} · commune par commune…`);
+    const communes = communesGeo.features;
+    const results = new Map();
+    let failures = 0;
+    let index = 0;
+    async function worker() {
+      while (index < communes.length) {
+        const i = index++;
+        const code = communes[i].properties?.code;
+        if (!code) continue;
+        try {
+          const items = await fetchGasparCommune(family, code);
+          if (items.length) results.set(code, items);
+        } catch (error) {
+          failures++;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: 8 }, worker));
+    if (failures === communes.length) throw new Error(`Service ${gasparLabel[family]} indisponible`);
+    const features = communes
+      .filter((feature) => results.has(feature.properties?.code))
+      .map((feature) => ({
+        ...feature,
+        properties: { ...feature.properties, gasparItems: results.get(feature.properties.code) }
+      }));
+    gasparCache[family] = { type: "FeatureCollection", features };
+    return gasparCache[family];
+  }
+
+  async function toggleGasparLayer(family, visible) {
+    const control = document.querySelector(`.layer-row[data-family="${family}"] input`);
+    if (!visible) {
+      if (gasparLayers[family]) map.removeLayer(gasparLayers[family]);
+      setStatus(`Couche ${gasparLabel[family]} masquée`);
+      return;
+    }
+    try {
+      if (control) control.disabled = true;
+      const data = gasparCache[family] || await buildGasparLayer(family);
+      if (!gasparLayers[family]) {
+        const color = gasparStyle[family];
+        gasparLayers[family] = L.geoJSON(data, {
+          pane: "overviewRisks",
+          style: { color, weight: 1.6, opacity: 0.9, fillColor: color, fillOpacity: 0.2, dashArray: family === "tri" ? "6 4" : null },
+          onEachFeature(feature, layer) {
+            layer.bindTooltip(`${gasparLabel[family]} · ${feature.properties.nom}`, { sticky: true, direction: "top" });
+            layer.on("click", (event) => {
+              suppressNextMapClick = true;
+              L.DomEvent.stopPropagation(event);
+              openGasparCommune(family, feature, event.latlng);
+              setTimeout(() => { suppressNextMapClick = false; }, 0);
+            });
+          }
+        });
+      }
+      gasparLayers[family].addTo(map);
+      setStatus(`${gasparLayers[family].getLayers().length} commune(s) concernée(s) par le ${gasparLabel[family]}`);
+    } catch (error) {
+      console.error(error);
+      setStatus(`Service ${gasparLabel[family]} indisponible`, false);
+      if (control) control.checked = false;
+      preferences[family] = false;
+    } finally {
+      if (control) control.disabled = false;
+    }
+  }
+
   function setStatus(text, ok = true) {
     $("#live-text").textContent = text;
     $("#live-sub").textContent = "Géorisques + Préfecture";
@@ -186,6 +386,8 @@
     input.addEventListener("change", () => {
       preferences[family] = input.checked;
       if (family === "inond" || family === "mvt") refreshLocalPprs();
+      if (family === "ruissellement") toggleRuissellement(input.checked);
+      if (family === "tri" || family === "azi") toggleGasparLayer(family, input.checked);
       updateScaleDisplay();
     });
     row.addEventListener("click", (event) => {
