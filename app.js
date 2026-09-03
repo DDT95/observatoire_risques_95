@@ -1029,6 +1029,10 @@
       input.checked = false;
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
+    $("#drawer").classList.remove("open");
+    if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; }
+    if (searchMarker) { map.removeLayer(searchMarker); searchMarker = null; }
+    setStatus("Couches et sélection réinitialisées");
   });
   loadLocalContext().then(updateScaleDisplay);
 
