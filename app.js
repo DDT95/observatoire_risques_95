@@ -560,7 +560,10 @@
     input.addEventListener("change", () => {
       preferences[family] = input.checked;
       if (family === "inond" || family === "mvt") refreshLocalPprs();
-      if (family === "argile") setLayerVisible("ALEARG_REALISE", input.checked);
+      if (family === "argile") {
+        setLayerVisible("ALEARG_REALISE", input.checked);
+        if (input.checked && map.getZoom() < 13) map.setZoom(13);
+      }
       if (family === "ruissellement") toggleRuissellement(input.checked);
       if (family === "tri" || family === "azi" || family === "radon") toggleCommuneLayer(family, input.checked);
       if (family === "cavites" || family === "icpe") togglePointLayer(family, input.checked);
