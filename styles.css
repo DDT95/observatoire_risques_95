@@ -72,13 +72,13 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .action{border:1px solid #cfd8ea;background:#fff;color:var(--blue);font-size:13px;font-weight:950;border-radius:14px;padding:12px}
 .action.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
 .action.dark{background:#111827;color:#fff;border-color:#111827}
-.list{min-height:0;overflow:auto;padding:10px 12px 14px}
+.list{flex:1 1 auto;min-height:0;overflow:auto;padding:10px 12px 14px;display:flex;flex-direction:column}
 .list,.source-monitor-scroll{scrollbar-width:thin;scrollbar-color:#c7d2e5 transparent}
 .list::-webkit-scrollbar,.source-monitor-scroll::-webkit-scrollbar{width:9px}
 .list::-webkit-scrollbar-track,.source-monitor-scroll::-webkit-scrollbar-track{background:transparent}
 .list::-webkit-scrollbar-thumb,.source-monitor-scroll::-webkit-scrollbar-thumb{background:#c7d2e5;border-radius:8px}
 .list::-webkit-scrollbar-thumb:hover,.source-monitor-scroll::-webkit-scrollbar-thumb:hover{background:#a9b7d6}
-.source-monitor-scroll{max-height:min(50vh,420px);overflow-y:auto;overflow-x:hidden;margin-top:12px;padding-right:2px}
+.source-monitor-scroll{flex:1 1 auto;min-height:220px;max-height:min(55vh,520px);overflow-y:auto;overflow-x:hidden;margin-top:12px;padding-right:2px}
 .edu-card{width:100%;border:1px solid var(--line);background:#fff;border-radius:16px;padding:13px;margin:8px 0;box-shadow:0 8px 24px rgba(15,23,42,.035)}
 .edu-card h3{margin:0 0 6px;font-size:15px;color:var(--blue-deep)}
 .edu-card p{font-size:12px;color:#334155;line-height:1.45;margin:6px 0}
@@ -426,7 +426,7 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 
 
 /* V17 — supervision des sources et synthèse métier */
-.source-monitor-card{padding:14px}
+.source-monitor-card{padding:14px;flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 .source-monitor-title{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .source-monitor-title h3{margin:0 0 3px}
 .source-monitor-title p{margin:0;font-size:11px;color:#64748b}
