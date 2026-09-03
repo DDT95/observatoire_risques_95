@@ -271,6 +271,7 @@
       if (control) control.disabled = true;
       if (!ruissellementLayer) {
         setStatus("Chargement des axes de ruissellement…");
+        showProgress();
         const response = await fetch("data/axes_ruissellement.geojson");
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
@@ -297,6 +298,7 @@
       preferences.ruissellement = false;
     } finally {
       if (control) control.disabled = false;
+      hideProgress();
     }
   }
 
@@ -386,6 +388,8 @@
     }
     try {
       if (control) control.disabled = true;
+      const alreadyCached = Boolean(communeCache[familyKey]);
+      if (!alreadyCached) showProgress();
       const data = communeCache[familyKey] || await buildCommuneLayer(familyKey);
       if (!communeLayers[familyKey]) {
         communeLayers[familyKey] = L.geoJSON(data, {
@@ -414,6 +418,7 @@
       preferences[familyKey] = false;
     } finally {
       if (control) control.disabled = false;
+      hideProgress();
     }
   }
 
@@ -478,6 +483,8 @@
     }
     try {
       if (control) control.disabled = true;
+      const alreadyCachedPoints = Boolean(pointCache[familyKey]);
+      if (!alreadyCachedPoints) showProgress();
       const data = pointCache[familyKey] || await buildPointLayer(familyKey);
       if (!pointLayers[familyKey]) {
         pointLayers[familyKey] = L.geoJSON(data, {
@@ -504,6 +511,7 @@
       preferences[familyKey] = false;
     } finally {
       if (control) control.disabled = false;
+      hideProgress();
     }
   }
 
@@ -511,6 +519,22 @@
     $("#live-text").textContent = text;
     $("#live-sub").textContent = "Géorisques + Préfecture";
     $("#live-dot").className = `live-dot ${ok ? "ok" : "ko"}`;
+  }
+
+  // Une couche par commune interroge l'API Géorisques 183 fois (une requête par
+  // commune) : ça peut prendre plusieurs secondes. Cette barre rend l'attente
+  // visible, plutôt que de laisser croire que rien ne se passe.
+  function showProgress() {
+    const bar = $("#progress-bar");
+    bar.style.transition = "width 12s cubic-bezier(.1,.6,.2,1)";
+    bar.style.width = "0%";
+    requestAnimationFrame(() => { bar.style.width = "88%"; });
+  }
+  function hideProgress() {
+    const bar = $("#progress-bar");
+    bar.style.transition = "width .3s";
+    bar.style.width = "100%";
+    setTimeout(() => { bar.style.width = "0"; }, 350);
   }
 
   function buildLayer(name) {
@@ -536,6 +560,9 @@
     input.addEventListener("change", () => {
       preferences[family] = input.checked;
       if (family === "inond" || family === "mvt") refreshLocalPprs();
+      if (family === "argile" && input.checked && map.getZoom() < 13) {
+        setStatus("Retrait-gonflement : zoomez sur une commune (zoom 13+) pour le voir apparaître", true);
+      }
       if (family === "ruissellement") toggleRuissellement(input.checked);
       if (family === "tri" || family === "azi" || family === "radon") toggleCommuneLayer(family, input.checked);
       if (family === "cavites" || family === "icpe") togglePointLayer(family, input.checked);
@@ -583,7 +610,9 @@
     badge.dataset.mode = detail ? "detail" : "overview";
     badge.innerHTML = detail
       ? "<strong>Zonages réglementaires</strong><span>Cliquez sur une couleur pour lire la règle</span>"
-      : "<strong>Vue départementale</strong><span>Périmètres PPRI et PPRN visibles</span>";
+      : preferences.argile
+        ? "<strong>Vue départementale</strong><span>Zoomez sur une commune pour voir le retrait-gonflement</span>"
+        : "<strong>Vue départementale</strong><span>Périmètres PPRI et PPRN visibles</span>";
   }
   updateScaleDisplay();
   map.on("zoomend", updateScaleDisplay);
