@@ -435,6 +435,11 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .global-api-state.ok{background:var(--green-soft);color:var(--green)}
 .global-api-state.warn{background:var(--orange-soft);color:var(--orange)}
 .global-api-state.ko{background:var(--red-soft);color:var(--red)}
+.clear-layers{
+  flex:none;border:1px solid #d7deea;padding:5px 10px;border-radius:999px;background:#fff;
+  color:var(--blue);font-size:10px;font-weight:1000;text-transform:uppercase;letter-spacing:.04em;cursor:pointer
+}
+.clear-layers:hover{background:var(--blue-soft);border-color:#cbd5ff}
 .source-monitor{display:grid;gap:16px;margin-top:12px}
 .layer-group{display:grid;gap:7px}
 .layer-group-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:1000;color:#64748b;padding:0 2px}

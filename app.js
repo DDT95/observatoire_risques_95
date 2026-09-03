@@ -80,18 +80,38 @@
     }
   };
 
-  function chunk(array, size) {
-    const out = [];
-    for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
-    return out;
-  }
-
-  async function fetchGeorisquesBatch(path, codes) {
-    const url = `${API}/${path}?code_insee=${codes.join(",")}&page_size=500`;
+  // Un appel par commune, en pool limité : le paramètre `code_insee` en liste
+  // séparée par virgules n'est documenté que pour certains endpoints (azi,
+  // installations_classees) et s'est révélé silencieusement défaillant sur
+  // d'autres (cavites, et de façon intermittente sur tri/azi) — un appel par
+  // commune est le seul mode confirmé fiable sur l'ensemble de l'API v1.
+  async function fetchGeorisquesCommune(path, codeInsee) {
+    const url = `${API}/${path}?code_insee=${encodeURIComponent(codeInsee)}&page_size=100`;
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     return data.data || data.content || (Array.isArray(data) ? data : []);
+  }
+
+  async function mapCommunesWithPool(communes, worker, poolSize = 8) {
+    let index = 0;
+    let failures = 0;
+    let firstError = null;
+    async function run() {
+      while (index < communes.length) {
+        const feature = communes[index++];
+        const code = feature.properties?.code;
+        if (!code) continue;
+        try {
+          await worker(feature, code);
+        } catch (error) {
+          failures++;
+          if (!firstError) firstError = error;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: poolSize }, run));
+    return { failures, firstError };
   }
 
   function riskFamily(props = {}) {
@@ -335,30 +355,15 @@
   async function buildCommuneLayer(familyKey) {
     if (!communesGeo?.features?.length) throw new Error("Communes indisponibles");
     const fam = communeFamilies[familyKey];
-    setStatus(`Chargement ${fam.label} · par lots de communes…`);
+    setStatus(`Chargement ${fam.label} · commune par commune…`);
     const communes = communesGeo.features;
-    const batches = chunk(communes, 10);
     const results = new Map();
-    let failures = 0;
-    let firstError = null;
-    await Promise.all(batches.map(async (batch) => {
-      const codes = batch.map((feature) => feature.properties?.code).filter(Boolean);
-      if (!codes.length) return;
-      try {
-        const items = await fetchGeorisquesBatch(fam.path, codes);
-        items.forEach((item) => {
-          const code = item.code_insee || item.codeInsee;
-          if (!code) return;
-          if (!results.has(code)) results.set(code, []);
-          results.get(code).push(item);
-        });
-      } catch (error) {
-        failures++;
-        if (!firstError) firstError = error;
-      }
-    }));
-    if (failures === batches.length) {
-      console.error(`Échec ${fam.label} sur tous les lots de communes`, firstError);
+    const { failures, firstError } = await mapCommunesWithPool(communes, async (feature, code) => {
+      const items = await fetchGeorisquesCommune(fam.path, code);
+      if (items.length) results.set(code, items);
+    });
+    if (failures === communes.length) {
+      console.error(`Échec ${fam.label} sur toutes les communes`, firstError);
       throw new Error(`Service ${fam.label} indisponible${firstError ? ` — ${firstError.message}` : ""}`);
     }
     const features = communes
@@ -443,30 +448,20 @@
   async function buildPointLayer(familyKey) {
     if (!communesGeo?.features?.length) throw new Error("Communes indisponibles");
     const fam = pointFamilies[familyKey];
-    setStatus(`Chargement ${fam.label} · par lots de communes…`);
+    setStatus(`Chargement ${fam.label} · commune par commune…`);
     const communes = communesGeo.features;
-    const batches = chunk(communes, 10);
     const features = [];
-    let failures = 0;
-    let firstError = null;
-    await Promise.all(batches.map(async (batch) => {
-      const codes = batch.map((feature) => feature.properties?.code).filter(Boolean);
-      if (!codes.length) return;
-      try {
-        const items = await fetchGeorisquesBatch(fam.path, codes);
-        items.forEach((item) => {
-          const lon = Number(item.longitude);
-          const lat = Number(item.latitude);
-          if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
-          features.push({ type: "Feature", properties: item, geometry: { type: "Point", coordinates: [lon, lat] } });
-        });
-      } catch (error) {
-        failures++;
-        if (!firstError) firstError = error;
-      }
-    }));
-    if (failures === batches.length) {
-      console.error(`Échec ${fam.label} sur tous les lots de communes`, firstError);
+    const { failures, firstError } = await mapCommunesWithPool(communes, async (feature, code) => {
+      const items = await fetchGeorisquesCommune(fam.path, code);
+      items.forEach((item) => {
+        const lon = Number(item.longitude);
+        const lat = Number(item.latitude);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+        features.push({ type: "Feature", properties: item, geometry: { type: "Point", coordinates: [lon, lat] } });
+      });
+    });
+    if (failures === communes.length) {
+      console.error(`Échec ${fam.label} sur toutes les communes`, firstError);
       throw new Error(`Service ${fam.label} indisponible${firstError ? ` — ${firstError.message}` : ""}`);
     }
     pointCache[familyKey] = { type: "FeatureCollection", features };
@@ -1004,6 +999,13 @@
   });
   $("#btn-valdoise").addEventListener("click", () => map.fitBounds(communesLayer?.getBounds?.().isValid() ? communesLayer.getBounds() : bounds95, { padding: [10, 10] }));
   $("#drawer-close").addEventListener("click", () => $("#drawer").classList.remove("open"));
+  $("#clear-layers")?.addEventListener("click", () => {
+    document.querySelectorAll(".layer-row input").forEach((input) => {
+      if (!input.checked) return;
+      input.checked = false;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  });
   loadLocalContext().then(updateScaleDisplay);
 
   // Lecture seule pour la fenêtre d'impression (print.html) : aucune donnée
