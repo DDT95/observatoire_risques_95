@@ -73,39 +73,46 @@
             <span class="global-api-state" id="global-api-state">Initialisation</span>
           </div>
           <div class="source-monitor" id="source-monitor">
-            <div class="source-monitor-row layer-row" data-family="inond">
-              <span class="layer-swatch swatch-inond"></span>
-              <div><strong>PPRI · Inondation</strong><small>Zonages réglementaires approuvés</small></div>
-              <label class="switch"><input type="checkbox" checked><span></span></label>
+            <div class="layer-group">
+              <div class="layer-group-title">Inondation</div>
+              <div class="source-monitor-row layer-row" data-family="inond">
+                <span class="layer-swatch swatch-inond"></span>
+                <div><strong>PPRI</strong><small>Zonages réglementaires approuvés</small></div>
+                <label class="switch"><input type="checkbox" checked><span></span></label>
+              </div>
+              <div class="source-monitor-row layer-row" data-family="ruissellement">
+                <span class="layer-swatch swatch-ruissellement"></span>
+                <div><strong>Axes de ruissellement</strong><small>Trajectoires probables de l’eau de pluie</small></div>
+                <label class="switch"><input type="checkbox"><span></span></label>
+              </div>
+              <div class="source-monitor-row layer-row" data-family="tri">
+                <span class="layer-swatch swatch-tri"></span>
+                <div><strong>TRI</strong><small>Territoires à risque important d’inondation</small></div>
+                <label class="switch"><input type="checkbox"><span></span></label>
+              </div>
+              <div class="source-monitor-row layer-row" data-family="azi">
+                <span class="layer-swatch swatch-azi"></span>
+                <div><strong>AZI</strong><small>Atlas des zones inondables</small></div>
+                <label class="switch"><input type="checkbox"><span></span></label>
+              </div>
             </div>
-            <div class="source-monitor-row layer-row" data-family="mvt">
-              <span class="layer-swatch swatch-mvt"></span>
-              <div><strong>Mouvements de terrain</strong><small>Carrières, gypse, instabilités</small></div>
-              <label class="switch"><input type="checkbox" checked><span></span></label>
-            </div>
-            <div class="source-monitor-row layer-row" data-family="argile">
-              <span class="layer-swatch swatch-argile"></span>
-              <div><strong>Retrait-gonflement</strong><small>Exposition des sols argileux</small></div>
-              <label class="switch"><input type="checkbox"><span></span></label>
-            </div>
-            <div class="source-monitor-row layer-row" data-family="ruissellement">
-              <span class="layer-swatch swatch-ruissellement"></span>
-              <div><strong>Axes de ruissellement</strong><small>Trajectoires probables de l’eau de pluie</small></div>
-              <label class="switch"><input type="checkbox"><span></span></label>
-            </div>
-            <div class="source-monitor-row layer-row" data-family="tri">
-              <span class="layer-swatch swatch-tri"></span>
-              <div><strong>TRI</strong><small>Territoires à risque important d’inondation</small></div>
-              <label class="switch"><input type="checkbox"><span></span></label>
-            </div>
-            <div class="source-monitor-row layer-row" data-family="azi">
-              <span class="layer-swatch swatch-azi"></span>
-              <div><strong>AZI</strong><small>Atlas des zones inondables</small></div>
-              <label class="switch"><input type="checkbox"><span></span></label>
+            <div class="layer-group">
+              <div class="layer-group-title">Mouvements de terrain</div>
+              <div class="source-monitor-row layer-row" data-family="mvt">
+                <span class="layer-swatch swatch-mvt"></span>
+                <div><strong>PPRN</strong><small>Carrières, gypse, instabilités</small></div>
+                <label class="switch"><input type="checkbox" checked><span></span></label>
+              </div>
+              <div class="source-monitor-row layer-row" data-family="argile">
+                <span class="layer-swatch swatch-argile"></span>
+                <div><strong>Retrait-gonflement</strong><small>Exposition des sols argileux</small></div>
+                <label class="switch"><input type="checkbox"><span></span></label>
+              </div>
             </div>
           </div>
         </div>
         <button class="action primary" id="btn-print-map" type="button" style="width:100%;margin-top:10px">Imprimer la carte (A3)</button>
+        <div class="list-scroll-fade" aria-hidden="true"></div>
       </div>
     </aside>
 
