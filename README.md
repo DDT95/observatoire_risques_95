@@ -30,4 +30,14 @@ Application cartographique DDT95 consacrée aux PPRI, PPRN et aléas naturels.
 
 Le fichier `ppr-documents.js` contient le catalogue des pièces publiées dans les fiches PPR Géorisques.
 
+## Flux d’inondation
+
+Trois couches complètent les zonages PPRI pour lire les flux d’eau plutôt que le seul zonage réglementaire :
+
+- **Axes de ruissellement** (`data/axes_ruissellement.geojson`, DDT 95, 21 septembre 2021, 2 049 axes) : trajectoires probables du ruissellement concentré selon la pente et le relief.
+- **TRI** (Territoires à Risque important d’Inondation) : communes classées par l’État au titre de la directive européenne Inondation, interrogées à la demande via `GET /api/v1/gaspar/tri?codeInsee=` (API Géorisques).
+- **AZI** (Atlas des Zones Inondables) : emprise des inondations historiques ou modélisées, à titre de connaissance, interrogée via `GET /api/v1/gaspar/azi?codeInsee=` (API Géorisques).
+
+Les couches TRI et AZI sont construites commune par commune au premier affichage (183 communes du Val-d’Oise) puis mises en cache dans la page ; elles n’ont pas de portée réglementaire directe, contrairement au PPRI.
+
 Les données cartographiques constituent une aide à la lecture. Les documents réglementaires approuvés et annexés aux arrêtés préfectoraux font foi.

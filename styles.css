@@ -182,7 +182,7 @@ h1{font-size:32px;line-height:1;margin:4px 0;letter-spacing:-.055em;color:var(--
 .leaflet-control a,.leaflet-control button{cursor:pointer!important}
 .leaflet-overviewRisks-pane path{cursor:pointer!important}
 .layer-swatch{width:16px;height:16px;border-radius:5px;border:2px solid rgba(15,23,42,.18);box-shadow:0 0 0 3px rgba(15,23,42,.04)}
-.swatch-inond{background:#4d74c9}.swatch-mvt{background:#b46a3c}.swatch-argile{background:#d7ad42}.swatch-perim{background:#9d77c9}
+.swatch-inond{background:#4d74c9}.swatch-mvt{background:#b46a3c}.swatch-argile{background:#d7ad42}.swatch-perim{background:#9d77c9}.swatch-ruissellement{background:#e1000f}.swatch-tri{background:#0f8b8d}.swatch-azi{background:#1479c9}
 .switch input{position:absolute;opacity:0;pointer-events:none}
 .switch span{display:block;width:38px;height:22px;border-radius:999px;background:#cbd5e1;position:relative;transition:.2s}
 .switch span:after{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(15,23,42,.25);transition:.2s}
