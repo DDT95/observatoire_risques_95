@@ -33,7 +33,7 @@
     ALEARG_REALISE: { title: "Retrait-gonflement des argiles", family: "Mouvement de terrain", opacity: 0.58 }
   };
   const layers = {};
-  const preferences = { inond: true, mvt: true, argile: false, ruissellement: false, tri: false, azi: false };
+  const preferences = { inond: true, mvt: true, argile: false, ruissellement: false, tri: false, azi: false, radon: false, cavites: false, icpe: false };
   let activeNames = [];
   let searchMarker = null;
   let clickMarker = null;
@@ -44,14 +44,55 @@
   let ruissellementLayer = null;
   let suppressNextMapClick = false;
 
-  const gasparLayers = { tri: null, azi: null };
-  const gasparCache = { tri: null, azi: null };
-  const gasparStyle = { tri: "#0f8b8d", azi: "#1479c9" };
-  const gasparLabel = { tri: "TRI", azi: "AZI" };
-  const gasparExplain = {
-    tri: "Un Territoire à Risque important d’Inondation (TRI) est un secteur où l’État concentre l’évaluation et la gestion du risque d’inondation, au titre de la directive européenne Inondation (2007/60/CE). Son classement ne dispense pas de consulter le PPRI applicable, qui reste la référence réglementaire.",
-    azi: "L’Atlas des Zones Inondables (AZI) cartographie l’emprise des inondations historiques ou modélisées, à titre de connaissance. Il n’a pas de portée réglementaire directe : c’est le PPRI, lorsqu’il existe, qui fixe les règles applicables."
+  // Couches par commune (polygones surlignés) : chemin et paramètres confirmés sur le client
+  // swagger généré à partir de la spec officielle Géorisques (vorpax/python-client-generated).
+  // Piège documenté : PPRN/PPRT utilisent `codeInsee` (camelCase), tout le reste de l'API v1
+  // (dont gaspar/tri, gaspar/azi, radon) utilise `code_insee` (snake_case).
+  const communeLayers = { tri: null, azi: null, radon: null };
+  const communeCache = { tri: null, azi: null, radon: null };
+  const radonColors = { 1: "#8ec9a4", 2: "#e8b04b", 3: "#c65f52" };
+  const communeFamilies = {
+    tri: {
+      path: "gaspar/tri", label: "TRI", color: "#0f8b8d", dash: "6 4",
+      explain: "Un Territoire à Risque important d’Inondation (TRI) est un secteur où l’État concentre l’évaluation et la gestion du risque d’inondation, au titre de la directive européenne Inondation (2007/60/CE). Son classement ne dispense pas de consulter le PPRI applicable, qui reste la référence réglementaire."
+    },
+    azi: {
+      path: "gaspar/azi", label: "AZI", color: "#1479c9", dash: null,
+      explain: "L’Atlas des Zones Inondables (AZI) cartographie l’emprise des inondations historiques ou modélisées, à titre de connaissance. Il n’a pas de portée réglementaire directe : c’est le PPRI, lorsqu’il existe, qui fixe les règles applicables."
+    },
+    radon: {
+      path: "radon", label: "Radon", color: null, dash: null,
+      explain: "Le radon est un gaz radioactif naturel qui peut s’accumuler dans les bâtiments. Chaque commune est classée en une des trois classes de potentiel radon, de la plus faible (1) à la plus significative (3). Ce classement ne signifie pas qu’un bâtiment donné est exposé : il oriente la nécessité de mesures et de gestes de prévention (aération, ventilation)."
+    }
   };
+
+  // Couches ponctuelles (un marqueur par site recensé), même mécanique de lots de communes.
+  const pointLayers = { cavites: null, icpe: null };
+  const pointCache = { cavites: null, icpe: null };
+  const pointFamilies = {
+    cavites: {
+      path: "cavites", label: "Cavités souterraines", color: "#8d533e",
+      explain: "Une cavité souterraine (carrière, marnière, cave, ouvrage militaire…) peut présenter un risque d’effondrement ou d’affaissement pour les constructions situées au-dessus. Sa présence ne signifie pas un risque avéré à l’aplomb exact : le BRGM recense la connaissance disponible, qui n’est pas exhaustive."
+    },
+    icpe: {
+      path: "installations_classees", label: "Installations classées (ICPE)", color: "#b34000",
+      explain: "Une Installation Classée pour la Protection de l’Environnement (ICPE) est un site industriel ou agricole soumis à une réglementation spécifique en raison des risques ou nuisances qu’il peut engendrer. Le statut Seveso, lorsqu’il est indiqué, signale un risque industriel majeur."
+    }
+  };
+
+  function chunk(array, size) {
+    const out = [];
+    for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
+    return out;
+  }
+
+  async function fetchGeorisquesBatch(path, codes) {
+    const url = `${API}/${path}?code_insee=${codes.join(",")}&page_size=500`;
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    return data.data || data.content || (Array.isArray(data) ? data : []);
+  }
 
   function riskFamily(props = {}) {
     const text = `${props.nomass || ""} ${props.code_alea || ""}`.toLowerCase();
@@ -239,19 +280,28 @@
     }
   }
 
-  function gasparItemRows(item) {
+  function detailRows(item) {
     return Object.entries(item)
       .filter(([, value]) => value !== null && value !== undefined && value !== "" && typeof value !== "object")
-      .slice(0, 8)
+      .slice(0, 10)
       .map(([key, value]) => `<div class="data-row"><div class="l">${escapeHtml(key.replace(/_/g, " "))}</div><div class="v">${escapeHtml(String(value))}</div></div>`)
       .join("");
   }
 
-  function openGasparCommune(family, feature, latlng) {
+  function communeFeatureColor(familyKey, feature) {
+    const fam = communeFamilies[familyKey];
+    if (familyKey === "radon") {
+      const classe = Number(feature.properties?.gasparItems?.[0]?.classe_potentiel);
+      return radonColors[classe] || "#94a3b8";
+    }
+    return fam.color;
+  }
+
+  function openCommuneRisk(familyKey, feature, latlng) {
+    const fam = communeFamilies[familyKey];
     const props = feature.properties || {};
     const items = props.gasparItems || [];
     const place = { city: props.nom, insee: props.code };
-    const label = gasparLabel[family];
 
     if (clickMarker) map.removeLayer(clickMarker);
     clickMarker = L.circleMarker(latlng, {
@@ -259,60 +309,57 @@
     }).addTo(map);
 
     $("#drawer-title").textContent = place.city;
-    $("#drawer-sub").textContent = `${label} · ${items.length} procédure${items.length > 1 ? "s" : ""} recensée${items.length > 1 ? "s" : ""}`;
-    $("#summary-status").textContent = "Inondation";
-    $("#summary-date").textContent = "Donnée officielle GASPAR";
-    $("#summary-text").textContent = gasparExplain[family];
+    $("#drawer-sub").textContent = familyKey === "radon"
+      ? `${fam.label} · classe ${items[0]?.classe_potentiel ?? "—"}`
+      : `${fam.label} · ${items.length} procédure${items.length > 1 ? "s" : ""} recensée${items.length > 1 ? "s" : ""}`;
+    $("#summary-status").textContent = familyKey === "radon" ? "Radon" : "Inondation";
+    $("#summary-date").textContent = "Donnée officielle Géorisques";
+    $("#summary-text").textContent = fam.explain;
     $("#btn-export").href = errialUrl();
     $("#btn-export").textContent = "Établir l’état des risques avec ERRIAL ↗";
     $("#btn-export").classList.remove("disabled");
 
     $("#drawer-body").innerHTML = `
-      <div class="section-title">${label} recensé(s) pour cette commune</div>
+      <div class="section-title">${escapeHtml(fam.label)} pour cette commune</div>
       ${items.map((item) => `
         <div class="block">
-          <div class="block-title">${escapeHtml(item.libelle || item.lib || item.nom || label)}</div>
-          <div class="data-grid">${gasparItemRows(item)}</div>
-        </div>`).join("") || `<div class="notice">Aucun détail publié par l’API Géorisques pour cette procédure ; la commune est néanmoins classée ${escapeHtml(label)}.</div>`}
+          <div class="block-title">${escapeHtml(item.libelle || item.lib || item.nom || (familyKey === "radon" ? `Classe ${item.classe_potentiel}` : fam.label))}</div>
+          <div class="data-grid">${detailRows(item)}</div>
+        </div>`).join("") || `<div class="notice">Aucun détail publié par l’API Géorisques pour cette procédure ; la commune est néanmoins classée ${escapeHtml(fam.label)}.</div>`}
       ${errialBlock(latlng, place)}
-      <div class="notice">Classement ${escapeHtml(label)} issu de l’API Géorisques (base GASPAR). Il complète mais ne remplace pas la lecture du PPRI et de son règlement approuvé.</div>`;
+      <div class="notice">Classement ${escapeHtml(fam.label)} issu de l’API Géorisques. ${familyKey === "radon" ? "Il n’a pas de portée réglementaire ; il oriente la prévention (aération, ventilation)." : "Il complète mais ne remplace pas la lecture du PPRI et de son règlement approuvé."}</div>`;
     $("#drawer").classList.add("open");
     setStatus("Commune identifiée");
   }
 
-  async function fetchGasparCommune(family, codeInsee) {
-    const response = await fetch(`${API}/gaspar/${family}?codeInsee=${encodeURIComponent(codeInsee)}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    return data.content || data.data || (Array.isArray(data) ? data : []);
-  }
-
-  async function buildGasparLayer(family) {
+  async function buildCommuneLayer(familyKey) {
     if (!communesGeo?.features?.length) throw new Error("Communes indisponibles");
-    setStatus(`Chargement ${gasparLabel[family]} · commune par commune…`);
+    const fam = communeFamilies[familyKey];
+    setStatus(`Chargement ${fam.label} · par lots de communes…`);
     const communes = communesGeo.features;
+    const batches = chunk(communes, 10);
     const results = new Map();
     let failures = 0;
     let firstError = null;
-    let index = 0;
-    async function worker() {
-      while (index < communes.length) {
-        const i = index++;
-        const code = communes[i].properties?.code;
-        if (!code) continue;
-        try {
-          const items = await fetchGasparCommune(family, code);
-          if (items.length) results.set(code, items);
-        } catch (error) {
-          failures++;
-          if (!firstError) firstError = error;
-        }
+    await Promise.all(batches.map(async (batch) => {
+      const codes = batch.map((feature) => feature.properties?.code).filter(Boolean);
+      if (!codes.length) return;
+      try {
+        const items = await fetchGeorisquesBatch(fam.path, codes);
+        items.forEach((item) => {
+          const code = item.code_insee || item.codeInsee;
+          if (!code) return;
+          if (!results.has(code)) results.set(code, []);
+          results.get(code).push(item);
+        });
+      } catch (error) {
+        failures++;
+        if (!firstError) firstError = error;
       }
-    }
-    await Promise.all(Array.from({ length: 8 }, worker));
-    if (failures === communes.length) {
-      console.error(`Échec ${gasparLabel[family]} sur toutes les communes`, firstError);
-      throw new Error(`Service ${gasparLabel[family]} indisponible${firstError ? ` — ${firstError.message}` : ""}`);
+    }));
+    if (failures === batches.length) {
+      console.error(`Échec ${fam.label} sur tous les lots de communes`, firstError);
+      throw new Error(`Service ${fam.label} indisponible${firstError ? ` — ${firstError.message}` : ""}`);
     }
     const features = communes
       .filter((feature) => results.has(feature.properties?.code))
@@ -320,43 +367,146 @@
         ...feature,
         properties: { ...feature.properties, gasparItems: results.get(feature.properties.code) }
       }));
-    gasparCache[family] = { type: "FeatureCollection", features };
-    return gasparCache[family];
+    communeCache[familyKey] = { type: "FeatureCollection", features };
+    return communeCache[familyKey];
   }
 
-  async function toggleGasparLayer(family, visible) {
-    const control = document.querySelector(`.layer-row[data-family="${family}"] input`);
+  async function toggleCommuneLayer(familyKey, visible) {
+    const fam = communeFamilies[familyKey];
+    const control = document.querySelector(`.layer-row[data-family="${familyKey}"] input`);
     if (!visible) {
-      if (gasparLayers[family]) map.removeLayer(gasparLayers[family]);
-      setStatus(`Couche ${gasparLabel[family]} masquée`);
+      if (communeLayers[familyKey]) map.removeLayer(communeLayers[familyKey]);
+      setStatus(`Couche ${fam.label} masquée`);
       return;
     }
     try {
       if (control) control.disabled = true;
-      const data = gasparCache[family] || await buildGasparLayer(family);
-      if (!gasparLayers[family]) {
-        const color = gasparStyle[family];
-        gasparLayers[family] = L.geoJSON(data, {
+      const data = communeCache[familyKey] || await buildCommuneLayer(familyKey);
+      if (!communeLayers[familyKey]) {
+        communeLayers[familyKey] = L.geoJSON(data, {
           pane: "overviewRisks",
-          style: { color, weight: 1.6, opacity: 0.9, fillColor: color, fillOpacity: 0.2, dashArray: family === "tri" ? "6 4" : null },
+          style: (feature) => {
+            const color = communeFeatureColor(familyKey, feature);
+            return { color, weight: 1.6, opacity: 0.9, fillColor: color, fillOpacity: 0.24, dashArray: fam.dash };
+          },
           onEachFeature(feature, layer) {
-            layer.bindTooltip(`${gasparLabel[family]} · ${feature.properties.nom}`, { sticky: true, direction: "top" });
+            layer.bindTooltip(`${fam.label} · ${feature.properties.nom}`, { sticky: true, direction: "top" });
             layer.on("click", (event) => {
               suppressNextMapClick = true;
               L.DomEvent.stopPropagation(event);
-              openGasparCommune(family, feature, event.latlng);
+              openCommuneRisk(familyKey, feature, event.latlng);
               setTimeout(() => { suppressNextMapClick = false; }, 0);
             });
           }
         });
       }
-      gasparLayers[family].addTo(map);
-      setStatus(`${gasparLayers[family].getLayers().length} commune(s) concernée(s) par le ${gasparLabel[family]}`);
+      communeLayers[familyKey].addTo(map);
+      setStatus(`${communeLayers[familyKey].getLayers().length} commune(s) concernée(s) par ${fam.label}`);
     } catch (error) {
       console.error(error);
-      setStatus(`Service ${gasparLabel[family]} indisponible — ${error.message}`, false);
+      setStatus(`Service ${fam.label} indisponible — ${error.message}`, false);
       if (control) control.checked = false;
-      preferences[family] = false;
+      preferences[familyKey] = false;
+    } finally {
+      if (control) control.disabled = false;
+    }
+  }
+
+  function openPointRisk(familyKey, feature, latlng) {
+    const fam = pointFamilies[familyKey];
+    const props = feature.properties || {};
+
+    if (clickMarker) map.removeLayer(clickMarker);
+    clickMarker = L.circleMarker(latlng, {
+      radius: 7, color: "#000091", weight: 3, fillColor: "#fff", fillOpacity: 1
+    }).addTo(map);
+
+    const title = props.raisonSociale || props.nature_cavite || props.type_cavite || fam.label;
+    $("#drawer-title").textContent = String(title);
+    $("#drawer-sub").textContent = fam.label;
+    $("#summary-status").textContent = familyKey === "icpe" ? "Technologique" : "Mouvement de terrain";
+    $("#summary-date").textContent = "Donnée officielle Géorisques";
+    $("#summary-text").textContent = fam.explain;
+    $("#btn-export").href = errialUrl();
+    $("#btn-export").textContent = "Établir l’état des risques avec ERRIAL ↗";
+    $("#btn-export").classList.remove("disabled");
+
+    $("#drawer-body").innerHTML = `
+      <div class="section-title">Détail</div>
+      <div class="block"><div class="data-grid">${detailRows(props)}</div></div>
+      ${errialBlock(latlng, {})}
+      <div class="notice">Donnée ponctuelle issue de l’API Géorisques (BRGM). Un point signale un site recensé ; l’absence de point ne garantit pas l’absence de risque, seulement l’absence de donnée publiée.</div>`;
+    $("#drawer").classList.add("open");
+    setStatus(`${fam.label} identifié(e)`);
+  }
+
+  async function buildPointLayer(familyKey) {
+    if (!communesGeo?.features?.length) throw new Error("Communes indisponibles");
+    const fam = pointFamilies[familyKey];
+    setStatus(`Chargement ${fam.label} · par lots de communes…`);
+    const communes = communesGeo.features;
+    const batches = chunk(communes, 10);
+    const features = [];
+    let failures = 0;
+    let firstError = null;
+    await Promise.all(batches.map(async (batch) => {
+      const codes = batch.map((feature) => feature.properties?.code).filter(Boolean);
+      if (!codes.length) return;
+      try {
+        const items = await fetchGeorisquesBatch(fam.path, codes);
+        items.forEach((item) => {
+          const lon = Number(item.longitude);
+          const lat = Number(item.latitude);
+          if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+          features.push({ type: "Feature", properties: item, geometry: { type: "Point", coordinates: [lon, lat] } });
+        });
+      } catch (error) {
+        failures++;
+        if (!firstError) firstError = error;
+      }
+    }));
+    if (failures === batches.length) {
+      console.error(`Échec ${fam.label} sur tous les lots de communes`, firstError);
+      throw new Error(`Service ${fam.label} indisponible${firstError ? ` — ${firstError.message}` : ""}`);
+    }
+    pointCache[familyKey] = { type: "FeatureCollection", features };
+    return pointCache[familyKey];
+  }
+
+  async function togglePointLayer(familyKey, visible) {
+    const fam = pointFamilies[familyKey];
+    const control = document.querySelector(`.layer-row[data-family="${familyKey}"] input`);
+    if (!visible) {
+      if (pointLayers[familyKey]) map.removeLayer(pointLayers[familyKey]);
+      setStatus(`Couche ${fam.label} masquée`);
+      return;
+    }
+    try {
+      if (control) control.disabled = true;
+      const data = pointCache[familyKey] || await buildPointLayer(familyKey);
+      if (!pointLayers[familyKey]) {
+        pointLayers[familyKey] = L.geoJSON(data, {
+          pane: "overviewRisks",
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 5, color: "#fff", weight: 1.5, fillColor: fam.color, fillOpacity: 0.9 }),
+          onEachFeature(feature, layer) {
+            const props = feature.properties || {};
+            layer.bindTooltip(String(props.raisonSociale || props.nature_cavite || fam.label), { sticky: true });
+            layer.on("click", (event) => {
+              suppressNextMapClick = true;
+              L.DomEvent.stopPropagation(event);
+              openPointRisk(familyKey, feature, event.latlng);
+              setTimeout(() => { suppressNextMapClick = false; }, 0);
+            });
+          }
+        });
+      }
+      pointLayers[familyKey].addTo(map);
+      setStatus(`${pointLayers[familyKey].getLayers().length} site(s) ${fam.label} affiché(s)`);
+    } catch (error) {
+      console.error(error);
+      setStatus(`Service ${fam.label} indisponible — ${error.message}`, false);
+      if (control) control.checked = false;
+      preferences[familyKey] = false;
     } finally {
       if (control) control.disabled = false;
     }
@@ -392,7 +542,8 @@
       preferences[family] = input.checked;
       if (family === "inond" || family === "mvt") refreshLocalPprs();
       if (family === "ruissellement") toggleRuissellement(input.checked);
-      if (family === "tri" || family === "azi") toggleGasparLayer(family, input.checked);
+      if (family === "tri" || family === "azi" || family === "radon") toggleCommuneLayer(family, input.checked);
+      if (family === "cavites" || family === "icpe") togglePointLayer(family, input.checked);
       updateScaleDisplay();
     });
     row.addEventListener("click", (event) => {
