@@ -277,7 +277,7 @@
         const data = await response.json();
         ruissellementLayer = L.geoJSON(data, {
           pane: "overviewRisks",
-          style: { color: "#e1000f", weight: 1.4, opacity: 0.78 },
+          style: { color: "#2c6e8f", weight: 1.6, opacity: 0.72 },
           onEachFeature(feature, layer) {
             layer.bindTooltip(feature.properties?.Nom || "Axe de ruissellement", { sticky: true });
             layer.on("click", (event) => {
@@ -489,7 +489,7 @@
       if (!pointLayers[familyKey]) {
         pointLayers[familyKey] = L.geoJSON(data, {
           pane: "overviewRisks",
-          pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 5, color: "#fff", weight: 1.5, fillColor: fam.color, fillOpacity: 0.9 }),
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 7, color: "#fff", weight: 2, fillColor: fam.color, fillOpacity: 0.95 }),
           onEachFeature(feature, layer) {
             const props = feature.properties || {};
             layer.bindTooltip(String(props.raisonSociale || props.nature_cavite || fam.label), { sticky: true });
@@ -561,7 +561,8 @@
       preferences[family] = input.checked;
       if (family === "inond" || family === "mvt") refreshLocalPprs();
       if (family === "argile" && input.checked && map.getZoom() < 13) {
-        setStatus("Retrait-gonflement : zoomez sur une commune (zoom 13+) pour le voir apparaître", true);
+        setStatus("Retrait-gonflement : zoom automatique — cette couche n’a pas de vue départementale", true);
+        map.setZoom(13);
       }
       if (family === "ruissellement") toggleRuissellement(input.checked);
       if (family === "tri" || family === "azi" || family === "radon") toggleCommuneLayer(family, input.checked);
