@@ -293,6 +293,7 @@
     const communes = communesGeo.features;
     const results = new Map();
     let failures = 0;
+    let firstError = null;
     let index = 0;
     async function worker() {
       while (index < communes.length) {
@@ -304,11 +305,15 @@
           if (items.length) results.set(code, items);
         } catch (error) {
           failures++;
+          if (!firstError) firstError = error;
         }
       }
     }
     await Promise.all(Array.from({ length: 8 }, worker));
-    if (failures === communes.length) throw new Error(`Service ${gasparLabel[family]} indisponible`);
+    if (failures === communes.length) {
+      console.error(`Échec ${gasparLabel[family]} sur toutes les communes`, firstError);
+      throw new Error(`Service ${gasparLabel[family]} indisponible${firstError ? ` — ${firstError.message}` : ""}`);
+    }
     const features = communes
       .filter((feature) => results.has(feature.properties?.code))
       .map((feature) => ({
@@ -349,7 +354,7 @@
       setStatus(`${gasparLayers[family].getLayers().length} commune(s) concernée(s) par le ${gasparLabel[family]}`);
     } catch (error) {
       console.error(error);
-      setStatus(`Service ${gasparLabel[family]} indisponible`, false);
+      setStatus(`Service ${gasparLabel[family]} indisponible — ${error.message}`, false);
       if (control) control.checked = false;
       preferences[family] = false;
     } finally {
