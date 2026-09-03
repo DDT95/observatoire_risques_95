@@ -560,10 +560,7 @@
     input.addEventListener("change", () => {
       preferences[family] = input.checked;
       if (family === "inond" || family === "mvt") refreshLocalPprs();
-      if (family === "argile" && input.checked && map.getZoom() < 13) {
-        setStatus("Retrait-gonflement : zoom automatique — cette couche n’a pas de vue départementale", true);
-        map.setZoom(13);
-      }
+      if (family === "argile") setLayerVisible("ALEARG_REALISE", input.checked);
       if (family === "ruissellement") toggleRuissellement(input.checked);
       if (family === "tri" || family === "azi" || family === "radon") toggleCommuneLayer(family, input.checked);
       if (family === "cavites" || family === "icpe") togglePointLayer(family, input.checked);
@@ -592,7 +589,6 @@
     setLayerVisible("PPRN_PERIMETRE_MVT", false);
     setLayerVisible("PPRN_ZONE_INOND", preferences.inond && detail);
     setLayerVisible("PPRN_ZONE_MVT", preferences.mvt && detail);
-    setLayerVisible("ALEARG_REALISE", preferences.argile && detail);
     if (localPprLayer) {
       localPprLayer.setStyle((feature) => {
         const color = riskColor(feature.properties);
@@ -611,9 +607,7 @@
     badge.dataset.mode = detail ? "detail" : "overview";
     badge.innerHTML = detail
       ? "<strong>Zonages réglementaires</strong><span>Cliquez sur une couleur pour lire la règle</span>"
-      : preferences.argile
-        ? "<strong>Vue départementale</strong><span>Zoomez sur une commune pour voir le retrait-gonflement</span>"
-        : "<strong>Vue départementale</strong><span>Périmètres PPRI et PPRN visibles</span>";
+      : "<strong>Vue départementale</strong><span>Périmètres PPRI et PPRN visibles</span>";
   }
   updateScaleDisplay();
   map.on("zoomend", updateScaleDisplay);
